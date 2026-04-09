@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { MessageSquare } from "lucide-react";
+import { AvatarCircle } from "@/components/ui/avatar-circle";
 
 export default async function CoachMessagesPage() {
   const supabase = await createClient();
@@ -10,7 +11,7 @@ export default async function CoachMessagesPage() {
     .from("clients")
     .select(`
       id, status,
-      profile:profiles!clients_profile_id_fkey (first_name, last_name, email)
+      profile:profiles!clients_profile_id_fkey (first_name, last_name, email, avatar_url)
     `)
     .eq("status", "active")
     .order("created_at", { ascending: false });
@@ -72,9 +73,7 @@ export default async function CoachMessagesPage() {
               <Link key={client.id} href={`/clients/${client.id}`}>
                 <div className={`px-5 py-4 flex items-center gap-4 hover:bg-surface-hover transition-colors ${hasUnread ? "bg-primary-lighter/30" : ""}`}>
                   <div className="relative">
-                    <div className="w-11 h-11 rounded-full bg-primary-lighter flex items-center justify-center shrink-0">
-                      <span className="text-sm font-bold text-primary-darker">{initials}</span>
-                    </div>
+                    <AvatarCircle src={client.profile?.avatar_url} initials={initials} size="md" />
                     {hasUnread && (
                       <div className="absolute -top-1 -right-1 w-5 h-5 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                         {client.unreadCount}

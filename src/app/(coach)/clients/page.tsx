@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Plus, Users, Search, MoreVertical } from "lucide-react";
+import { AvatarCircle } from "@/components/ui/avatar-circle";
 import { Button } from "@/components/ui/button";
 
 export default async function ClientsPage() {
@@ -162,9 +163,7 @@ export default async function ClientsPage() {
                   <div className="grid grid-cols-[1fr_80px_120px_80px_80px] gap-4 px-5 py-3.5 items-center hover:bg-surface-hover transition-colors">
                     {/* Name */}
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-primary-lighter flex items-center justify-center shrink-0">
-                        <span className="text-xs font-bold text-primary-darker">{initials}</span>
-                      </div>
+                      <AvatarCircle src={profile?.avatar_url} initials={initials} size="sm" />
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-text-primary truncate">
                           {profile?.first_name} {profile?.last_name}

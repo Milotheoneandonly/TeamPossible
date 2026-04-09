@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { getClientStats } from "@/actions/clients";
+import { AvatarCircle } from "@/components/ui/avatar-circle";
 import Link from "next/link";
 import { Users, ClipboardCheck, MessageSquare, Plus, ArrowRight } from "lucide-react";
 
@@ -38,7 +39,7 @@ export default async function CoachDashboard() {
     .from("clients")
     .select(`
       id, status, created_at,
-      profile:profiles!clients_profile_id_fkey (first_name, last_name, email)
+      profile:profiles!clients_profile_id_fkey (first_name, last_name, email, avatar_url)
     `)
     .eq("status", "active")
     .order("created_at", { ascending: false })
@@ -181,9 +182,7 @@ export default async function CoachDashboard() {
                 return (
                   <Link key={client.id} href={`/clients/${client.id}`}>
                     <div className="px-6 py-3 flex items-center gap-3 hover:bg-surface-hover transition-colors">
-                      <div className="w-8 h-8 rounded-full bg-primary-lighter flex items-center justify-center shrink-0">
-                        <span className="text-xs font-bold text-primary-darker">{initials}</span>
-                      </div>
+                      <AvatarCircle src={client.profile?.avatar_url} initials={initials} size="xs" />
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-text-primary truncate">
                           {client.profile?.first_name} {client.profile?.last_name}

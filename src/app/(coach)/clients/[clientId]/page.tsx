@@ -2,6 +2,7 @@ import { getClient } from "@/actions/clients";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AvatarUpload } from "@/components/coach/avatar-upload";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -122,9 +123,12 @@ export default async function ClientDetailPage({
 
       {/* Client header */}
       <div className="flex items-center gap-5 mb-8">
-        <div className="w-20 h-20 rounded-full bg-primary-lighter flex items-center justify-center shrink-0">
-          <span className="text-2xl font-bold text-primary-darker">{initials}</span>
-        </div>
+        <AvatarUpload
+          profileId={profile?.id}
+          currentUrl={profile?.avatar_url}
+          initials={initials}
+          size="lg"
+        />
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-text-primary">
