@@ -4,14 +4,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
-  Salad,
-  Dumbbell,
-  TrendingUp,
-  ClipboardCheck,
+  ArrowUpRight,
   MessageSquare,
-  User,
-  Calendar,
-  Target,
+  Settings,
+  FileText,
 } from "lucide-react";
 
 export default async function ClientDetailPage({
@@ -30,8 +26,52 @@ export default async function ClientDetailPage({
 
   const supabase = await createClient();
   const profile = client.profile;
+  const initials = `${profile?.first_name?.[0] || ""}${profile?.last_name?.[0] || ""}`.toUpperCase();
 
-  // Get active plans
+  // Calculate week number
+  const startDate = client.start_date ? new Date(client.start_date) : new Date(client.created_at);
+  const now = new Date();
+  const weekNumber = Math.max(1, Math.ceil((now.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)));
+
+  // Latest progress (weight)
+  const { data: latestProgress } = await supabase
+    .from("progress_entries")
+    .select("weight_kg, date")
+    .eq("client_id", clientId)
+    .order("date", { ascending: false })
+    .limit(2);
+
+  const currentWeight = latestProgress?.[0]?.weight_kg;
+  const previousWeight = latestProgress?.[1]?.weight_kg;
+  const weightDiff = currentWeight && previousWeight
+    ? (currentWeight - previousWeight).toFixed(1)
+    : null;
+
+  // Latest check-in
+  const { data: latestCheckIn } = await supabase
+    .from("check_ins")
+    .select("id, status, submitted_at, created_at")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  // Calculate next check-in (assume weekly from last one)
+  let nextCheckInText = "—";
+  let hasNewCheckIn = false;
+  if (latestCheckIn?.status === "submitted") {
+    hasNewCheckIn = true;
+    nextCheckInText = "Ny check-in!";
+  } else if (latestCheckIn?.submitted_at || latestCheckIn?.created_at) {
+    const lastDate = new Date(latestCheckIn.submitted_at || latestCheckIn.created_at);
+    const nextDate = new Date(lastDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const daysUntil = Math.ceil((nextDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysUntil <= 0) nextCheckInText = "Idag";
+    else if (daysUntil === 1) nextCheckInText = "Om 1 dag";
+    else nextCheckInText = `Om ${daysUntil} dagar`;
+  }
+
+  // Active meal plan
   const { data: activeMealPlan } = await supabase
     .from("meal_plans")
     .select("id, title, target_calories")
@@ -39,41 +79,39 @@ export default async function ClientDetailPage({
     .eq("is_active", true)
     .single();
 
+  // Count meals in active plan
+  let mealCount = 0;
+  if (activeMealPlan) {
+    const { count } = await supabase
+      .from("meal_plan_days")
+      .select("id", { count: "exact", head: true })
+      .eq("plan_id", activeMealPlan.id);
+    // Actually count meals, not days
+    const { data: days } = await supabase
+      .from("meal_plan_days")
+      .select("meals(id)")
+      .eq("plan_id", activeMealPlan.id);
+    mealCount = (days || []).reduce((acc: number, d: any) => acc + (d.meals?.length || 0), 0);
+  }
+
+  // Active workout plan
   const { data: activeWorkoutPlan } = await supabase
     .from("workout_plans")
-    .select("id, title")
+    .select("id, title, workout_days(id)")
     .eq("client_id", clientId)
     .eq("is_active", true)
     .single();
 
-  // Get latest progress
-  const { data: latestProgress } = await supabase
-    .from("progress_entries")
-    .select("weight_kg, date, energy_level")
-    .eq("client_id", clientId)
-    .order("date", { ascending: false })
-    .limit(1)
-    .single();
-
-  // Get pending check-ins count
-  const { count: pendingCheckIns } = await supabase
-    .from("check_ins")
-    .select("*", { count: "exact", head: true })
-    .eq("client_id", clientId)
-    .eq("status", "submitted");
-
-  // Get unread messages
+  // Unread messages
   const { count: unreadMessages } = await supabase
     .from("messages")
     .select("*", { count: "exact", head: true })
     .eq("client_id", clientId)
     .eq("is_read", false);
 
-  const initials = `${profile?.first_name?.[0] || ""}${profile?.last_name?.[0] || ""}`.toUpperCase();
-
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Back link */}
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Back */}
       <Link
         href="/clients"
         className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary mb-6 transition-colors"
@@ -83,154 +121,209 @@ export default async function ClientDetailPage({
       </Link>
 
       {/* Client header */}
-      <div className="bg-white rounded-2xl border border-border p-6 shadow-sm mb-6">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-primary-lighter flex items-center justify-center shrink-0">
-            <span className="text-xl font-bold text-primary-darker">{initials}</span>
-          </div>
-          <div>
+      <div className="flex items-center gap-5 mb-8">
+        <div className="w-20 h-20 rounded-full bg-primary-lighter flex items-center justify-center shrink-0">
+          <span className="text-2xl font-bold text-primary-darker">{initials}</span>
+        </div>
+        <div>
+          <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-text-primary">
               {profile?.first_name} {profile?.last_name}
             </h1>
-            <p className="text-text-secondary">{profile?.email}</p>
-            {profile?.phone && (
-              <p className="text-sm text-text-muted">{profile.phone}</p>
-            )}
-          </div>
-          <div className="ml-auto">
-            <span
-              className={`text-sm font-medium px-3 py-1.5 rounded-full ${
-                client.status === "active"
-                  ? "bg-success/10 text-success"
-                  : client.status === "paused"
-                  ? "bg-warning/10 text-warning"
-                  : "bg-surface text-text-muted"
-              }`}
-            >
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+              client.status === "active" ? "bg-success/10 text-success" : "bg-surface text-text-muted"
+            }`}>
               {client.status === "active" ? "Aktiv" : client.status === "paused" ? "Pausad" : "Inaktiv"}
             </span>
           </div>
-        </div>
-
-        {/* Client details */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-          {client.goals && (
-            <div className="flex items-start gap-2">
-              <Target className="w-4 h-4 text-text-muted mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs text-text-muted">Mål</p>
-                <p className="text-sm text-text-primary">{client.goals}</p>
-              </div>
-            </div>
-          )}
-          {client.start_date && (
-            <div className="flex items-start gap-2">
-              <Calendar className="w-4 h-4 text-text-muted mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs text-text-muted">Startdatum</p>
-                <p className="text-sm text-text-primary">
-                  {new Date(client.start_date).toLocaleDateString("sv-SE")}
-                </p>
-              </div>
-            </div>
-          )}
-          {latestProgress?.weight_kg && (
-            <div className="flex items-start gap-2">
-              <TrendingUp className="w-4 h-4 text-text-muted mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs text-text-muted">Senaste vikt</p>
-                <p className="text-sm text-text-primary">{latestProgress.weight_kg} kg</p>
-              </div>
-            </div>
-          )}
+          {/* Sub-tabs */}
+          <div className="flex gap-6 mt-3 text-sm">
+            <span className="font-medium text-text-primary border-b-2 border-primary-darker pb-1">Översikt</span>
+            <Link href={`/meal-plans`} className="text-text-muted hover:text-text-primary transition-colors pb-1">Näring</Link>
+            <Link href={`/workouts`} className="text-text-muted hover:text-text-primary transition-colors pb-1">Träning</Link>
+            <span className="text-text-muted pb-1">Framsteg</span>
+          </div>
         </div>
       </div>
 
-      {/* Quick action cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Meal plan */}
-        <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
-              <Salad className="w-5 h-5 text-success" />
-            </div>
-            <h3 className="font-semibold text-text-primary">Kostplan</h3>
+      {/* Main grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left column */}
+        <div className="space-y-4">
+          {/* Status message */}
+          <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
+            {hasNewCheckIn ? (
+              <>
+                <h2 className="text-xl font-bold text-text-primary">
+                  Snyggt! {profile?.first_name} har gjort en ny check-in
+                </h2>
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-text-muted mb-1">Klientinställningar</p>
+                {client.notes ? (
+                  <p className="text-sm text-text-secondary">{client.notes}</p>
+                ) : (
+                  <p className="text-sm text-text-muted italic">Inga anteckningar</p>
+                )}
+              </>
+            )}
           </div>
-          {activeMealPlan ? (
-            <p className="text-sm text-text-secondary">
-              {activeMealPlan.title}
-              {activeMealPlan.target_calories && ` — ${activeMealPlan.target_calories} kcal`}
+
+          {/* Week + membership */}
+          <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
+            <p className="text-sm text-text-muted mb-1">Pågående medlemskap</p>
+            <p className="text-lg font-bold text-text-primary">
+              Vecka {weekNumber}
             </p>
-          ) : (
-            <p className="text-sm text-text-muted">Ingen kostplan tilldelad</p>
-          )}
-          <Link
-            href="/meal-plans"
-            className="text-sm font-medium text-primary-darker hover:underline mt-3 inline-block"
-          >
-            {activeMealPlan ? "Ändra plan" : "Tilldela plan"} →
-          </Link>
+            <p className="text-xs text-text-muted mt-1">
+              Start: {startDate.toLocaleDateString("sv-SE")}
+            </p>
+          </div>
+
+          {/* Messages */}
+          <div className="bg-white rounded-2xl border border-border p-4 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-text-muted" />
+              <span className="text-sm text-text-primary">
+                {unreadMessages ? `${unreadMessages} olästa meddelanden` : "0 olästa meddelanden"}
+              </span>
+            </div>
+            <ArrowUpRight className="w-4 h-4 text-text-muted" />
+          </div>
         </div>
 
-        {/* Workout plan */}
-        <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-primary-lighter flex items-center justify-center">
-              <Dumbbell className="w-5 h-5 text-primary-darker" />
+        {/* Middle column - Weight + Kostschema */}
+        <div className="space-y-4">
+          {/* Weight card */}
+          <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-text-muted">Vikt</p>
+              <ArrowUpRight className="w-4 h-4 text-text-muted" />
             </div>
-            <h3 className="font-semibold text-text-primary">Träningsprogram</h3>
+            {weightDiff ? (
+              <>
+                <p className={`text-4xl font-bold ${
+                  Number(weightDiff) < 0 ? "text-text-primary" : "text-text-primary"
+                }`}>
+                  {Number(weightDiff) > 0 ? "+" : ""}{weightDiff} <span className="text-lg font-normal text-text-muted">kg</span>
+                </p>
+                <p className="text-sm text-text-muted mt-1">
+                  {currentWeight} kg totalt
+                </p>
+              </>
+            ) : currentWeight ? (
+              <>
+                <p className="text-4xl font-bold text-text-primary">
+                  {currentWeight} <span className="text-lg font-normal text-text-muted">kg</span>
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-text-muted">Ingen vikt registrerad</p>
+            )}
           </div>
-          {activeWorkoutPlan ? (
-            <p className="text-sm text-text-secondary">{activeWorkoutPlan.title}</p>
-          ) : (
-            <p className="text-sm text-text-muted">Inget program tilldelat</p>
-          )}
-          <Link
-            href="/workouts"
-            className="text-sm font-medium text-primary-darker hover:underline mt-3 inline-block"
-          >
-            {activeWorkoutPlan ? "Ändra program" : "Tilldela program"} →
-          </Link>
+
+          {/* Kostschema card */}
+          <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-text-muted">Kostschema</p>
+              <Link href="/meal-plans">
+                <ArrowUpRight className="w-4 h-4 text-text-muted hover:text-text-primary" />
+              </Link>
+            </div>
+            {activeMealPlan ? (
+              <>
+                <p className="text-4xl font-bold text-text-primary">
+                  {activeMealPlan.target_calories || "—"} <span className="text-lg font-normal text-text-muted">kcal</span>
+                </p>
+                <p className="text-sm text-text-muted mt-1">
+                  {mealCount} måltider/dag
+                </p>
+                <p className="text-xs text-text-secondary mt-2 truncate">
+                  {activeMealPlan.title}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-text-muted mb-3">Inget kostschema tilldelat</p>
+                <Link
+                  href="/meal-plans"
+                  className="text-sm font-medium text-primary-darker hover:underline"
+                >
+                  Tilldela kostplan →
+                </Link>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Check-ins */}
-        <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center">
-              <ClipboardCheck className="w-5 h-5 text-warning" />
+        {/* Right column - Check-in + Träning */}
+        <div className="space-y-4">
+          {/* Check-in card */}
+          <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-text-muted">Check-in</p>
+              <ArrowUpRight className="w-4 h-4 text-text-muted" />
             </div>
-            <h3 className="font-semibold text-text-primary">Check-ins</h3>
+            {hasNewCheckIn ? (
+              <p className="text-2xl font-bold text-success">Ny check-in!</p>
+            ) : (
+              <>
+                <p className="text-4xl font-bold text-text-primary">
+                  {nextCheckInText}
+                </p>
+                <p className="text-sm text-text-muted mt-1">
+                  Nästa check-in
+                </p>
+              </>
+            )}
           </div>
-          <p className="text-sm text-text-secondary">
-            {pendingCheckIns
-              ? `${pendingCheckIns} väntande check-in${pendingCheckIns > 1 ? "s" : ""}`
-              : "Inga väntande check-ins"}
-          </p>
-        </div>
 
-        {/* Messages */}
-        <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-              <MessageSquare className="w-5 h-5 text-accent" />
+          {/* Träning card */}
+          <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-text-muted">Träning</p>
+              <Link href="/workouts">
+                <ArrowUpRight className="w-4 h-4 text-text-muted hover:text-text-primary" />
+              </Link>
             </div>
-            <h3 className="font-semibold text-text-primary">Meddelanden</h3>
+            {activeWorkoutPlan ? (
+              <>
+                <p className="text-4xl font-bold text-text-primary">
+                  {(activeWorkoutPlan as any).workout_days?.length || 0} <span className="text-lg font-normal text-text-muted">Pass</span>
+                </p>
+                <p className="text-xs text-text-secondary mt-2 truncate">
+                  {activeWorkoutPlan.title}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-text-muted mb-3">Inget program tilldelat</p>
+                <Link
+                  href="/workouts"
+                  className="text-sm font-medium text-primary-darker hover:underline"
+                >
+                  Tilldela program →
+                </Link>
+              </>
+            )}
           </div>
-          <p className="text-sm text-text-secondary">
-            {unreadMessages
-              ? `${unreadMessages} oläst${unreadMessages > 1 ? "a" : ""} meddelande${unreadMessages > 1 ? "n" : ""}`
-              : "Inga olästa meddelanden"}
-          </p>
         </div>
       </div>
 
-      {/* Coach notes */}
-      {client.notes && (
-        <div className="mt-6 bg-white rounded-2xl border border-border p-5 shadow-sm">
-          <h3 className="font-semibold text-text-primary mb-2">Anteckningar</h3>
-          <p className="text-sm text-text-secondary whitespace-pre-wrap">{client.notes}</p>
+      {/* Bottom section - Communication */}
+      <div className="mt-8">
+        <h3 className="text-sm font-medium text-text-muted mb-3">Kommunikation & Media</h3>
+        <div className="space-y-2">
+          <div className="bg-white rounded-2xl border border-border p-4 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <FileText className="w-5 h-5 text-text-muted" />
+              <span className="text-sm text-text-primary">Dokument</span>
+            </div>
+            <ArrowUpRight className="w-4 h-4 text-text-muted" />
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
