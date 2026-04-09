@@ -10,6 +10,7 @@ import {
   Plus, Search, X, GripVertical, Play, MoreHorizontal,
 } from "lucide-react";
 import { VideoModal } from "@/components/coach/video-modal";
+import { getYouTubeThumbnail } from "@/lib/youtube";
 import {
   DndContext,
   closestCenter,
@@ -17,6 +18,8 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDraggable,
+  useDroppable,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
@@ -27,6 +30,51 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+
+function DraggableSidebarExercise({ exercise, onClick }: { exercise: any; onClick: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `sidebar-${exercise.id}`,
+    data: { exerciseId: exercise.id },
+  });
+
+  const style = {
+    transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  const thumb = exercise.video_url ? getYouTubeThumbnail(exercise.video_url) : null;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-surface-hover transition-colors text-left border-b border-border-light cursor-grab active:cursor-grabbing"
+    >
+      <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
+        {thumb ? (
+          <img src={thumb} alt="" className="w-10 h-10 object-cover" />
+        ) : exercise.video_url ? (
+          <div className="w-10 h-10 bg-primary-lighter flex items-center justify-center">
+            <Play className="w-4 h-4 text-primary-darker" />
+          </div>
+        ) : (
+          <div className="w-10 h-10 bg-surface flex items-center justify-center">
+            <Dumbbell className="w-4 h-4 text-text-muted" />
+          </div>
+        )}
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-text-primary truncate">{exercise.name_sv || exercise.name}</p>
+        <p className="text-[10px] text-text-muted truncate">
+          {exercise.muscle_groups?.join(", ") || ""}{exercise.equipment?.length ? ` · ${exercise.equipment[0]}` : ""}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function SortableExerciseRow({ we, onRemove, onUpdate, onVideoClick }: {
   we: any;
@@ -54,11 +102,24 @@ function SortableExerciseRow({ we, onRemove, onUpdate, onVideoClick }: {
       {/* Thumbnail - clickable for video */}
       <button
         onClick={() => ex?.video_url && onVideoClick(ex.name_sv || ex.name, ex.video_url)}
-        className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${
-          ex?.video_url ? "bg-primary-lighter hover:bg-primary-light cursor-pointer" : "bg-surface cursor-default"
+        className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 overflow-hidden ${
+          ex?.video_url ? "cursor-pointer" : "bg-surface cursor-default"
         }`}
       >
-        {ex?.video_url ? <Play className="w-5 h-5 text-primary-darker" /> : <Dumbbell className="w-5 h-5 text-text-muted" />}
+        {ex?.video_url ? (
+          (() => {
+            const thumb = getYouTubeThumbnail(ex.video_url);
+            return thumb ? (
+              <img src={thumb} alt="" className="w-12 h-12 object-cover rounded-lg" />
+            ) : (
+              <div className="w-12 h-12 bg-primary-lighter flex items-center justify-center rounded-lg">
+                <Play className="w-5 h-5 text-primary-darker" />
+              </div>
+            );
+          })()
+        ) : (
+          <Dumbbell className="w-5 h-5 text-text-muted" />
+        )}
       </button>
 
       {/* Name + notes */}
@@ -250,6 +311,18 @@ export default function WorkoutPlanDetailPage() {
 
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
+
+    // Check if it's a sidebar exercise being dropped into the workout area
+    const activeId = String(active.id);
+    if (activeId.startsWith("sidebar-")) {
+      const exerciseId = activeId.replace("sidebar-", "");
+      if (activeDay) {
+        await addExerciseToDay(exerciseId);
+      }
+      return;
+    }
+
+    // Otherwise it's a reorder within the day
     if (!over || active.id === over.id) return;
 
     const oldIndex = currentExercises.findIndex((e: any) => e.id === active.id);
@@ -258,7 +331,6 @@ export default function WorkoutPlanDetailPage() {
 
     const reordered = arrayMove([...currentExercises], oldIndex, newIndex) as any[];
 
-    // Update sort_order for all affected items
     for (let i = 0; i < reordered.length; i++) {
       if (reordered[i].sort_order !== i) {
         await supabase.from("workout_exercises").update({ sort_order: i }).eq("id", reordered[i].id);
@@ -361,6 +433,7 @@ export default function WorkoutPlanDetailPage() {
       )}
 
       {/* Main content */}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <div className="flex-1 flex overflow-hidden">
         {/* Exercise library (left sidebar) */}
         <div className="w-72 bg-white border-r border-border flex flex-col shrink-0 hidden lg:flex">
@@ -384,25 +457,11 @@ export default function WorkoutPlanDetailPage() {
               </div>
             ) : (
               filteredExercises.map((ex) => (
-                <button
+                <DraggableSidebarExercise
                   key={ex.id}
+                  exercise={ex}
                   onClick={() => addExerciseToDay(ex.id)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-surface-hover transition-colors text-left border-b border-border-light"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-primary-lighter flex items-center justify-center shrink-0">
-                    {ex.video_url ? (
-                      <Play className="w-4 h-4 text-primary-darker" />
-                    ) : (
-                      <Dumbbell className="w-4 h-4 text-primary-darker" />
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-text-primary truncate">{ex.name_sv || ex.name}</p>
-                    <p className="text-[10px] text-text-muted truncate">
-                      {ex.muscle_groups?.join(", ") || ""}{ex.equipment?.length ? ` · ${ex.equipment[0]}` : ""}
-                    </p>
-                  </div>
-                </button>
+                />
               ))
             )}
           </div>
@@ -428,7 +487,6 @@ export default function WorkoutPlanDetailPage() {
               </div>
             </div>
           ) : (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={currentExercises.map((e: any) => e.id)} strategy={verticalListSortingStrategy}>
             <div className="max-w-3xl space-y-2">
               {currentExercises.map((we: any) => (
@@ -442,10 +500,10 @@ export default function WorkoutPlanDetailPage() {
               ))}
             </div>
             </SortableContext>
-            </DndContext>
           )}
         </div>
       </div>
+      </DndContext>
     </div>
 
     {/* Video modal */}
