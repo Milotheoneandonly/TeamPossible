@@ -5,7 +5,14 @@ import { createClient } from "@/lib/supabase/client";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Search, X, Salad, Loader2, UserPlus, CheckCircle } from "lucide-react";
+import { ArrowLeft, Plus, Search, X, Salad, Loader2, UserPlus, CheckCircle, GripVertical } from "lucide-react";
+import {
+  DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const MEAL_TYPE_LABELS: Record<string, string> = {
   breakfast: "Frukost",
@@ -17,6 +24,25 @@ const MEAL_TYPE_LABELS: Record<string, string> = {
 };
 
 const DAY_NAMES = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"];
+
+function SortableMealCard({ id, children }: { id: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="bg-white rounded-2xl border border-border p-4 shadow-sm flex gap-2">
+      <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-text-muted hover:text-text-primary mt-1 shrink-0">
+        <GripVertical className="w-4 h-4" />
+      </button>
+      <div className="flex-1 min-w-0">{children}</div>
+    </div>
+  );
+}
 
 export default function MealPlanEditorPage() {
   const params = useParams();
@@ -32,9 +58,16 @@ export default function MealPlanEditorPage() {
   const [addingToMeal, setAddingToMeal] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [assigned, setAssigned] = useState(false);
+  const [addingMealToDay, setAddingMealToDay] = useState<string | null>(null);
+  const [newMealName, setNewMealName] = useState("");
 
   const supabase = createClient();
   const router = useRouter();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   useEffect(() => {
     loadPlan();
@@ -191,6 +224,51 @@ export default function MealPlanEditorPage() {
     loadPlan();
   }
 
+  async function handleMealDragEnd(dayId: string, event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const day = (plan?.meal_plan_days || []).find((d: any) => d.id === dayId);
+    if (!day) return;
+    const meals = (day.meals || []).sort((a: any, b: any) => a.sort_order - b.sort_order);
+
+    const oldIndex = meals.findIndex((m: any) => m.id === active.id);
+    const newIndex = meals.findIndex((m: any) => m.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove([...meals], oldIndex, newIndex) as any[];
+    for (let i = 0; i < reordered.length; i++) {
+      if (reordered[i].sort_order !== i) {
+        await supabase.from("meals").update({ sort_order: i }).eq("id", reordered[i].id);
+      }
+    }
+    loadPlan();
+  }
+
+  async function addMealToDay(dayId: string) {
+    if (!newMealName.trim()) return;
+
+    const day = (plan?.meal_plan_days || []).find((d: any) => d.id === dayId);
+    const maxSort = (day?.meals || []).reduce((max: number, m: any) => Math.max(max, m.sort_order || 0), -1);
+
+    await supabase.from("meals").insert({
+      day_id: dayId,
+      meal_type: "snack_am",
+      name: newMealName,
+      sort_order: maxSort + 1,
+    });
+
+    setNewMealName("");
+    setAddingMealToDay(null);
+    loadPlan();
+  }
+
+  async function removeMeal(mealId: string) {
+    if (!confirm("Ta bort denna måltid och alla dess recept?")) return;
+    await supabase.from("meals").delete().eq("id", mealId);
+    loadPlan();
+  }
+
   const filteredRecipes = recipes.filter((r) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
@@ -285,7 +363,35 @@ export default function MealPlanEditorPage() {
 
           return (
             <div key={day.id}>
-              <h2 className="text-lg font-semibold text-text-primary mb-3">{dayLabel}</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold text-text-primary">{dayLabel}</h2>
+                <button
+                  onClick={() => { setAddingMealToDay(addingMealToDay === day.id ? null : day.id); setNewMealName(""); }}
+                  className="text-xs font-medium text-primary-darker hover:underline flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Lägg till måltid
+                </button>
+              </div>
+
+              {/* Add meal form */}
+              {addingMealToDay === day.id && (
+                <div className="flex items-center gap-2 mb-3">
+                  <input
+                    value={newMealName}
+                    onChange={(e) => setNewMealName(e.target.value)}
+                    placeholder="T.ex. Frukost 2, IW (Intra-Workout)..."
+                    autoFocus
+                    className="flex-1 rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+                    onKeyDown={(e) => e.key === "Enter" && addMealToDay(day.id)}
+                  />
+                  <Button size="sm" onClick={() => addMealToDay(day.id)} disabled={!newMealName.trim()}>Lägg till</Button>
+                  <button onClick={() => setAddingMealToDay(null)} className="text-text-muted hover:text-text-primary p-1"><X className="w-4 h-4" /></button>
+                </div>
+              )}
+
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleMealDragEnd(day.id, e)}>
+              <SortableContext items={meals.map((m: any) => m.id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-3">
                 {meals.map((meal: any) => {
                   const items = (meal.meal_items || []).sort((a: any, b: any) => a.sort_order - b.sort_order);
@@ -296,10 +402,10 @@ export default function MealPlanEditorPage() {
                   });
 
                   return (
-                    <div key={meal.id} className="bg-white rounded-2xl border border-border p-4 shadow-sm">
+                    <SortableMealCard key={meal.id} id={meal.id}>
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="font-medium text-text-primary text-sm">
-                          {MEAL_TYPE_LABELS[meal.meal_type] || meal.name || meal.meal_type}
+                          {meal.name || MEAL_TYPE_LABELS[meal.meal_type] || meal.meal_type}
                         </h3>
                         <div className="flex items-center gap-3">
                           {totalCal > 0 && <span className="text-xs text-text-muted">{Math.round(totalCal)} kcal</span>}
@@ -309,6 +415,9 @@ export default function MealPlanEditorPage() {
                           >
                             <Plus className="w-3.5 h-3.5" />
                             Lägg till
+                          </button>
+                          <button onClick={() => removeMeal(meal.id)} className="text-text-muted hover:text-error p-0.5">
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
@@ -345,14 +454,9 @@ export default function MealPlanEditorPage() {
                         <div className="mt-3 pt-3 border-t border-border-light">
                           <div className="relative mb-2">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-                            <input
-                              type="text"
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                              placeholder="Sök recept..."
-                              autoFocus
-                              className="w-full rounded-lg border border-border bg-surface pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
-                            />
+                            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                              placeholder="Sök recept..." autoFocus
+                              className="w-full rounded-lg border border-border bg-surface pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50" />
                           </div>
                           <div className="max-h-48 overflow-y-auto space-y-1">
                             {filteredRecipes.length === 0 ? (
@@ -361,12 +465,8 @@ export default function MealPlanEditorPage() {
                               </p>
                             ) : (
                               filteredRecipes.map((recipe) => (
-                                <button
-                                  key={recipe.id}
-                                  onClick={() => addRecipeToMeal(meal.id, recipe)}
-                                  disabled={saving}
-                                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-primary-lighter/50 transition-colors text-left"
-                                >
+                                <button key={recipe.id} onClick={() => addRecipeToMeal(meal.id, recipe)} disabled={saving}
+                                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-primary-lighter/50 transition-colors text-left">
                                   <span className="text-sm text-text-primary truncate">{recipe.name_sv || recipe.name}</span>
                                   <span className="text-xs text-text-muted shrink-0 ml-2">
                                     {recipe.total_calories ? `${Math.round(recipe.total_calories)} kcal` : "—"}
@@ -377,10 +477,12 @@ export default function MealPlanEditorPage() {
                           </div>
                         </div>
                       )}
-                    </div>
+                    </SortableMealCard>
                   );
                 })}
               </div>
+              </SortableContext>
+              </DndContext>
             </div>
           );
         })}
