@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Plus, Dumbbell, UserPlus, Library } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ExerciseList } from "@/components/coach/exercise-list";
 
 export default async function WorkoutPlansPage({
   searchParams,
@@ -148,44 +149,7 @@ export default async function WorkoutPlansPage({
               <Link href="/workouts/new-exercise" className="text-sm text-primary-darker hover:underline mt-2 inline-block">Lägg till din första övning →</Link>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
-              {/* Table header */}
-              <div className="grid grid-cols-[1fr_150px_150px_100px] gap-4 px-5 py-3 border-b border-border text-xs font-semibold text-text-muted uppercase tracking-wide">
-                <span>Namn</span>
-                <span>Muskelgrupper</span>
-                <span>Utrustning</span>
-                <span>Nivå</span>
-              </div>
-
-              <div className="divide-y divide-border-light">
-                {exercises.map((ex: any) => (
-                  <div key={ex.id} className="grid grid-cols-[1fr_150px_150px_100px] gap-4 px-5 py-3 items-center hover:bg-surface-hover transition-colors">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {ex.video_url ? (
-                        <div className="w-10 h-10 rounded-lg bg-primary-lighter flex items-center justify-center shrink-0">
-                          <Dumbbell className="w-5 h-5 text-primary-darker" />
-                        </div>
-                      ) : (
-                        <div className="w-10 h-10 rounded-lg bg-surface flex items-center justify-center shrink-0">
-                          <Dumbbell className="w-5 h-5 text-text-muted" />
-                        </div>
-                      )}
-                      <p className="text-sm font-medium text-text-primary truncate">{ex.name_sv || ex.name}</p>
-                    </div>
-                    <p className="text-sm text-text-secondary truncate">{ex.muscle_groups?.join(", ") || "—"}</p>
-                    <p className="text-sm text-text-secondary truncate">{ex.equipment?.join(", ") || "—"}</p>
-                    <span className={`text-xs px-2 py-1 rounded-full inline-block w-fit ${
-                      ex.difficulty === "beginner" ? "bg-success/10 text-success"
-                        : ex.difficulty === "intermediate" ? "bg-warning/10 text-warning"
-                        : ex.difficulty === "advanced" ? "bg-error/10 text-error"
-                        : "bg-surface text-text-muted"
-                    }`}>
-                      {ex.difficulty === "beginner" ? "Nybörjare" : ex.difficulty === "intermediate" ? "Medel" : ex.difficulty === "advanced" ? "Avancerad" : "—"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <ExerciseList exercises={exercises as any} />
           )}
         </>
       )}

@@ -9,6 +9,7 @@ import {
   ArrowLeft, Dumbbell, Loader2, UserPlus, CheckCircle,
   Plus, Search, X, GripVertical, Play, MoreHorizontal,
 } from "lucide-react";
+import { VideoModal } from "@/components/coach/video-modal";
 
 export default function WorkoutPlanDetailPage() {
   const params = useParams();
@@ -26,6 +27,7 @@ export default function WorkoutPlanDetailPage() {
   const [activeDay, setActiveDay] = useState<string | null>(null);
   const [addingDayName, setAddingDayName] = useState("");
   const [showAddDay, setShowAddDay] = useState(false);
+  const [videoModal, setVideoModal] = useState<{ title: string; url: string } | null>(null);
 
   const supabase = createClient();
   const router = useRouter();
@@ -168,6 +170,7 @@ export default function WorkoutPlanDetailPage() {
   const currentExercises = currentDay ? (currentDay.workout_exercises || []).sort((a: any, b: any) => a.sort_order - b.sort_order) : [];
 
   return (
+    <>
     <div className="h-[calc(100vh-64px)] lg:h-screen flex flex-col">
       {/* Top bar */}
       <div className="bg-white border-b border-border px-4 py-3 shrink-0">
@@ -305,60 +308,69 @@ export default function WorkoutPlanDetailPage() {
               {currentExercises.map((we: any, idx: number) => {
                 const ex = we.exercise;
                 return (
-                  <div key={we.id} className="bg-white rounded-xl border border-border p-3 shadow-sm flex items-center gap-3">
-                    {/* Thumbnail */}
-                    <div className="w-12 h-12 rounded-lg bg-primary-lighter flex items-center justify-center shrink-0">
+                  <div key={we.id} className="bg-white rounded-xl border border-border shadow-sm flex items-center gap-0">
+                    {/* Thumbnail - clickable for video */}
+                    <button
+                      onClick={() => ex?.video_url && setVideoModal({ title: ex.name_sv || ex.name, url: ex.video_url })}
+                      className={`w-14 h-14 rounded-l-xl flex items-center justify-center shrink-0 ${
+                        ex?.video_url ? "bg-primary-lighter hover:bg-primary-light cursor-pointer" : "bg-surface cursor-default"
+                      }`}
+                    >
                       {ex?.video_url ? (
-                        <a href={ex.video_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                          <Play className="w-5 h-5 text-primary-darker" />
-                        </a>
+                        <Play className="w-5 h-5 text-primary-darker" />
                       ) : (
-                        <Dumbbell className="w-5 h-5 text-primary-darker" />
+                        <Dumbbell className="w-5 h-5 text-text-muted" />
                       )}
-                    </div>
+                    </button>
 
-                    {/* Name */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-text-primary truncate">{ex?.name_sv || ex?.name || "Övning"}</p>
-                      {we.notes && <p className="text-[10px] text-text-muted truncate">{we.notes}</p>}
+                    {/* Name + notes */}
+                    <div className="flex-1 min-w-0 px-3 py-2">
+                      <p className="text-sm font-semibold text-text-primary truncate">{ex?.name_sv || ex?.name || "Övning"}</p>
+                      <input
+                        type="text"
+                        defaultValue={we.notes || ""}
+                        placeholder="Lägg till anteckning"
+                        onBlur={(e) => updateExercise(we.id, "notes", e.target.value)}
+                        className="text-xs text-text-muted w-full bg-transparent focus:outline-none placeholder:text-text-muted/50 mt-0.5"
+                      />
                     </div>
 
                     {/* Set */}
-                    <div className="text-center w-16 shrink-0">
+                    <div className="text-center px-2 shrink-0 w-16">
                       <p className="text-[10px] text-text-muted">Set</p>
-                      <input
-                        type="number"
-                        defaultValue={we.sets}
+                      <input type="number" defaultValue={we.sets}
                         onBlur={(e) => updateExercise(we.id, "sets", parseInt(e.target.value) || 3)}
-                        className="w-12 text-center text-sm font-medium border border-border rounded-lg px-1 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50"
-                      />
+                        className="w-12 text-center text-sm font-semibold border border-border rounded-lg px-1 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50" />
                     </div>
 
-                    {/* Reps */}
-                    <div className="text-center w-20 shrink-0">
+                    {/* Vikt */}
+                    <div className="text-center px-2 shrink-0 w-20">
+                      <p className="text-[10px] text-text-muted">Vikt</p>
+                      <div className="flex items-center justify-center gap-0.5">
+                        <input type="number" defaultValue={10} className="w-10 text-center text-sm font-semibold border border-border rounded-lg px-1 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50" />
+                        <span className="text-[10px] text-text-muted">kg</span>
+                      </div>
+                    </div>
+
+                    {/* Repetitioner */}
+                    <div className="text-center px-2 shrink-0 w-24">
                       <p className="text-[10px] text-text-muted">Repetitioner</p>
-                      <input
-                        type="text"
-                        defaultValue={we.reps}
+                      <input type="text" defaultValue={we.reps}
                         onBlur={(e) => updateExercise(we.id, "reps", e.target.value || "10")}
-                        className="w-16 text-center text-sm font-medium border border-border rounded-lg px-1 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50"
-                      />
+                        className="w-16 text-center text-sm font-semibold border border-border rounded-lg px-1 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50" />
                     </div>
 
-                    {/* Rest */}
-                    <div className="text-center w-16 shrink-0">
+                    {/* Vila */}
+                    <div className="text-center px-2 shrink-0 w-16">
                       <p className="text-[10px] text-text-muted">Vila</p>
-                      <input
-                        type="number"
-                        defaultValue={we.rest_seconds}
+                      <input type="number" defaultValue={we.rest_seconds}
                         onBlur={(e) => updateExercise(we.id, "rest_seconds", parseInt(e.target.value) || 60)}
-                        className="w-12 text-center text-sm font-medium border border-border rounded-lg px-1 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50"
-                      />
+                        className="w-12 text-center text-sm font-semibold border border-border rounded-lg px-1 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50" />
                     </div>
 
-                    {/* Remove */}
-                    <button onClick={() => removeExercise(we.id)} className="text-text-muted hover:text-error p-1 shrink-0">
-                      <X className="w-4 h-4" />
+                    {/* Actions */}
+                    <button onClick={() => removeExercise(we.id)} className="text-text-muted hover:text-error p-2 shrink-0">
+                      <MoreHorizontal className="w-4 h-4" />
                     </button>
                   </div>
                 );
@@ -368,5 +380,15 @@ export default function WorkoutPlanDetailPage() {
         </div>
       </div>
     </div>
+
+    {/* Video modal */}
+    {videoModal && (
+      <VideoModal
+        title={videoModal.title}
+        videoUrl={videoModal.url}
+        onClose={() => setVideoModal(null)}
+      />
+    )}
+    </>
   );
 }
