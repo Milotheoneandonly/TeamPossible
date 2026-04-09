@@ -129,9 +129,11 @@ export default function NewRecipePage() {
     let imageUrl = null;
     if (imageFile) {
       const fileExt = imageFile.name.split(".").pop();
-      const filePath = `recipes/${user.id}/${Date.now()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage.from("recipe-images").upload(filePath, imageFile);
-      if (!uploadError) {
+      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage.from("recipe-images").upload(filePath, imageFile, { upsert: true });
+      if (uploadError) {
+        console.error("Recipe image upload error:", uploadError);
+      } else {
         const { data: { publicUrl } } = supabase.storage.from("recipe-images").getPublicUrl(filePath);
         imageUrl = publicUrl;
       }
