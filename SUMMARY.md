@@ -28,7 +28,7 @@ A fitness coaching platform built for one coach (Alice) and her 30 Swedish/Nordi
 - `foods` (name, name_sv, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, category -- 200+ Swedish foods seeded including nuts, drinks, supplements, sauces, frozen items)
 - `recipes` (coach_id, name, name_sv, total_calories, total_protein, total_carbs, total_fat, tags[], instructions, prep_time_minutes, cook_time_minutes, servings, **image_url**)
 - `recipe_ingredients` (recipe_id, food_id, amount_g, sort_order)
-- `meal_plans` (coach_id, client_id nullable, title, is_template, is_active, target_calories, target_protein_g, target_carbs_g, target_fat_g)
+- `meal_plans` (coach_id, client_id nullable, title, is_template, is_active, target_calories, target_protein_g, target_carbs_g, target_fat_g, **image_url**)
 - `meal_plan_days` (plan_id, day_number, name, sort_order)
 - `meals` (day_id, meal_type, sort_order)
 - `meal_items` (meal_id, food_id or recipe_id, amount_g, sort_order)
@@ -56,7 +56,7 @@ A fitness coaching platform built for one coach (Alice) and her 30 Swedish/Nordi
 ### Messaging
 - `messages` (client_id, sender_id, body, is_read)
 
-## Migrations (11 files)
+## Migrations (13 files)
 1. `00001_initial_schema.sql` -- Core tables, profiles, clients, exercises, workouts, meals, check-ins, progress, messages
 2. `00002_rls_policies.sql` -- RLS with `is_coach()` and `my_client_id()` helper functions
 3. `00003_seed_swedish_foods.sql` -- Initial 150+ Swedish foods
@@ -68,6 +68,8 @@ A fitness coaching platform built for one coach (Alice) and her 30 Swedish/Nordi
 9. `00009_client_tags.sql` -- Added `tags text[]` column to clients table
 10. `00010_more_foods.sql` -- 50+ additional foods (nuts, drinks, dairy brands, supplements, sauces, frozen items)
 11. `00011_recipe_images_storage.sql` -- Storage policies for `recipe-images` bucket
+12. `00012_fix_all_storage.sql` -- Storage policies for `content-files` bucket (was missing, causing upload errors)
+13. `00013_meal_plan_image.sql` -- Added `image_url` column to `meal_plans` table for cover images
 
 ## RLS Security
 - `is_coach()` and `my_client_id()` SQL helper functions
@@ -77,7 +79,7 @@ A fitness coaching platform built for one coach (Alice) and her 30 Swedish/Nordi
 - Lessons: coach full CRUD, clients can view published only
 - Client documents: coach full CRUD, client can view own assignments
 
-## All Routes (37 total)
+## All Routes (38 total)
 
 ### Public
 - `/` -- Landing page (hero, features, testimonials, CTA, footer)
@@ -95,10 +97,11 @@ A fitness coaching platform built for one coach (Alice) and her 30 Swedish/Nordi
 - `/clients/[id]/dokument` -- **Client documents page**: assign files/lessons from content library picker, remove assignments, grouped by type (Filer/Lektioner)
 - `/foods` -- **Naring** hub with 3 tabs: Mallar (template cards with delete + assigned plans section), Recept (table with macros/tags), Livsmedel (full food database table)
 - `/foods/new-recipe` -- Recipe creator with **image upload** (to recipe-images bucket), ingredient search with auto macro calculation, tags (Frukost/Lunch/Middag/Mellanmal/Proteinrik/Snabb/Vegansk/Vegetarisk), prep/cook time, servings
+- `/foods/recipe/[id]` -- **Recipe edit page**: edit name, macros, instructions, tags, image. Delete recipe button. Click any recipe in Recept tab to open
 - `/foods/new-food` -- Add custom food/ingredient
 - `/meal-plans/new` -- Create kostplan (auto-creates 7 days x 5 meal types)
 - `/meal-plans` -- Meal plans listing
-- `/meal-plans/[id]` -- Meal plan editor with **drag-and-drop** (SortableMealCard with GripVertical handle via @dnd-kit), add recipes/foods to meal slots, day tabs, assign-to-client flow
+- `/meal-plans/[id]` -- Meal plan editor with **drag-and-drop** (SortableMealCard with GripVertical handle via @dnd-kit), add recipes/foods to meal slots, day tabs, assign-to-client flow, **cover image upload**
 - `/workouts` -- **Traning** hub with 2 tabs: Mallar (template cards with delete + assigned plans), Ovningar (exercise list with click-to-edit). Assign flow with client banner
 - `/workouts/new` -- Create workout program with custom days
 - `/workouts/new-exercise` -- Add exercise (muscles, equipment, difficulty, YouTube URL, notes)
