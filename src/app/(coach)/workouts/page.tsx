@@ -119,17 +119,18 @@ export default async function WorkoutPlansPage({
               <h2 className="text-lg font-semibold text-text-primary mb-4">Tilldelade program</h2>
               <div className="bg-white rounded-2xl border border-border shadow-sm divide-y divide-border-light">
                 {assignedPlans.map((plan: any) => (
-                  <Link key={plan.id} href={`/workouts/${plan.id}`}>
-                    <div className="px-5 py-4 flex items-center justify-between hover:bg-surface-hover transition-colors">
-                      <div>
-                        <p className="font-medium text-text-primary">{plan.title}</p>
-                        <p className="text-sm text-text-muted">
-                          {plan.client?.profile?.first_name} {plan.client?.profile?.last_name} — {plan.workout_days?.length || 0} dagar
-                        </p>
-                      </div>
+                  <div key={plan.id} className="px-5 py-4 flex items-center justify-between hover:bg-surface-hover transition-colors">
+                    <Link href={`/workouts/${plan.id}`} className="flex-1 min-w-0">
+                      <p className="font-medium text-text-primary">{plan.title}</p>
+                      <p className="text-sm text-text-muted">
+                        {plan.client?.profile?.first_name} {plan.client?.profile?.last_name} — {plan.workout_days?.length || 0} dagar
+                      </p>
+                    </Link>
+                    <div className="flex items-center gap-2 shrink-0">
                       {plan.is_active && <span className="text-xs font-medium bg-success/10 text-success px-2.5 py-1 rounded-full">Aktiv</span>}
+                      <DeleteWorkoutPlanButton planId={plan.id} planTitle={plan.title} />
                     </div>
-                  </Link>
+                  </div>
                 ))}
               </div>
             </div>

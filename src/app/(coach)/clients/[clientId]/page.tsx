@@ -254,13 +254,13 @@ export default async function ClientDetailPage({
           </div>
           <ArrowUpRight className="w-4 h-4 text-text-muted" />
         </div>
-        <div className="bg-white rounded-2xl border border-border p-4 shadow-sm flex items-center justify-between">
+        <Link href={`/clients/${clientId}/dokument`} className="bg-white rounded-2xl border border-border p-4 shadow-sm flex items-center justify-between hover:border-primary/30 transition-colors">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-text-muted" />
             <span className="text-sm text-text-primary">Dokument</span>
           </div>
           <ArrowUpRight className="w-4 h-4 text-text-muted" />
-        </div>
+        </Link>
       </div>
 
       {/* Danger zone */}

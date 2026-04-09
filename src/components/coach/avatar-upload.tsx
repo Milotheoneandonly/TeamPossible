@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 import { Camera, Loader2 } from "lucide-react";
 
 interface AvatarUploadProps {
@@ -17,6 +18,7 @@ export function AvatarUpload({ profileId, currentUrl, initials, size = "md", onU
   const [avatarUrl, setAvatarUrl] = useState(currentUrl || "");
   const fileRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
+  const router = useRouter();
 
   const sizeClasses = {
     sm: "w-10 h-10 text-xs",
@@ -68,6 +70,7 @@ export function AvatarUpload({ profileId, currentUrl, initials, size = "md", onU
     setAvatarUrl(urlWithCache);
     setUploading(false);
     onUploaded?.(urlWithCache);
+    router.refresh();
   }
 
   return (
