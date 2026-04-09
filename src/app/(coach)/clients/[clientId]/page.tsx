@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AvatarUpload } from "@/components/coach/avatar-upload";
 import { DeleteClientButton } from "@/components/coach/delete-client-button";
+import { ClientTagToggle } from "@/components/coach/client-tag-toggle";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -135,6 +136,7 @@ export default async function ClientDetailPage({
             <h1 className="text-2xl font-bold text-text-primary">
               {profile?.first_name} {profile?.last_name}
             </h1>
+            <ClientTagToggle clientId={clientId} currentTags={client.tags || []} />
             <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
               client.status === "active" ? "bg-success/10 text-success" : "bg-surface text-text-muted"
             }`}>

@@ -11,7 +11,7 @@ export default async function ClientsPage() {
   const { data: clients } = await supabase
     .from("clients")
     .select(`
-      id, status, start_date, notes, goals, created_at,
+      id, status, start_date, notes, goals, tags, created_at,
       profile:profiles!clients_profile_id_fkey (
         id, first_name, last_name, email, phone, avatar_url
       )
@@ -164,10 +164,13 @@ export default async function ClientsPage() {
                     {/* Name */}
                     <div className="flex items-center gap-3 min-w-0">
                       <AvatarCircle src={profile?.avatar_url} initials={initials} size="sm" />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex items-center gap-2">
                         <p className="text-sm font-medium text-text-primary truncate">
                           {profile?.first_name} {profile?.last_name}
                         </p>
+                        {client.tags?.includes("COMP") && (
+                          <span className="text-[10px] font-bold bg-accent text-white px-1.5 py-0.5 rounded shrink-0">COMP</span>
+                        )}
                       </div>
                     </div>
 
