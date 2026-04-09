@@ -32,16 +32,17 @@ export default function NewFilePage() {
     if (!user) { setLoading(false); return; }
 
     // Upload file
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const fileExt = file.name.split(".").pop();
-    const filePath = `${user.id}/${Date.now()}-${file.name}`;
+    const filePath = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2)}_${safeName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("content-files")
       .upload(filePath, file);
 
     if (uploadError) {
-      // Try avatars bucket as fallback if content-files doesn't exist
-      setError("Kunde inte ladda upp filen. Kontrollera att 'content-files' bucket finns i Supabase Storage.");
+      console.error("Upload error:", uploadError);
+      setError(`Kunde inte ladda upp filen: ${uploadError.message}`);
       setLoading(false);
       return;
     }

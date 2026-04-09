@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Search, X, Salad, Loader2, UserPlus, CheckCircle, GripVertical } from "lucide-react";
+import { ArrowLeft, Plus, Search, X, Salad, Loader2, UserPlus, CheckCircle, GripVertical, Camera } from "lucide-react";
 import {
   DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent,
 } from "@dnd-kit/core";
@@ -59,6 +59,8 @@ export default function MealPlanEditorPage() {
   const [saving, setSaving] = useState(false);
   const [assigned, setAssigned] = useState(false);
   const [addingMealToDay, setAddingMealToDay] = useState<string | null>(null);
+  const [planImageUrl, setPlanImageUrl] = useState<string | null>(null);
+  const planImageRef = useRef<HTMLInputElement>(null);
   const [newMealName, setNewMealName] = useState("");
 
   const supabase = createClient();
@@ -96,6 +98,7 @@ export default function MealPlanEditorPage() {
       .single();
 
     setPlan(data);
+    if (data?.image_url) setPlanImageUrl(data.image_url);
     setLoading(false);
   }
 
@@ -269,6 +272,24 @@ export default function MealPlanEditorPage() {
     loadPlan();
   }
 
+  async function uploadPlanImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const fileExt = file.name.split(".").pop();
+    const filePath = `meal-plans/${user.id}/${Date.now()}.${fileExt}`;
+    const { error: uploadError } = await supabase.storage.from("recipe-images").upload(filePath, file, { upsert: true });
+
+    if (!uploadError) {
+      const { data: { publicUrl } } = supabase.storage.from("recipe-images").getPublicUrl(filePath);
+      await supabase.from("meal_plans").update({ image_url: publicUrl }).eq("id", planId);
+      setPlanImageUrl(publicUrl);
+    }
+  }
+
   const filteredRecipes = recipes.filter((r) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
@@ -335,14 +356,37 @@ export default function MealPlanEditorPage() {
       )}
 
       <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-text-primary">{plan.title}</h1>
-            {plan.description && <p className="text-text-secondary mt-1">{plan.description}</p>}
+        <div className="flex items-start gap-4">
+          {/* Plan image */}
+          <div className="shrink-0">
+            {planImageUrl ? (
+              <div className="relative w-16 h-16 rounded-xl overflow-hidden group cursor-pointer" onClick={() => planImageRef.current?.click()}>
+                <img src={planImageUrl} alt="" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <Camera className="w-4 h-4 text-white" />
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => planImageRef.current?.click()}
+                className="w-16 h-16 rounded-xl border-2 border-dashed border-border bg-surface flex flex-col items-center justify-center hover:border-primary/50 transition-colors">
+                <Camera className="w-5 h-5 text-text-muted mb-0.5" />
+                <span className="text-[8px] text-text-muted">Bild</span>
+              </button>
+            )}
+            <input ref={planImageRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadPlanImage} className="hidden" />
           </div>
-          <div className="flex gap-2">
-            {plan.is_template && <span className="text-xs font-medium bg-primary-lighter text-primary-darker px-3 py-1.5 rounded-full">Mall</span>}
-            {plan.is_active && <span className="text-xs font-medium bg-success/10 text-success px-3 py-1.5 rounded-full">Aktiv</span>}
+
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-text-primary">{plan.title}</h1>
+                {plan.description && <p className="text-text-secondary mt-1">{plan.description}</p>}
+              </div>
+              <div className="flex gap-2">
+                {plan.is_template && <span className="text-xs font-medium bg-primary-lighter text-primary-darker px-3 py-1.5 rounded-full">Mall</span>}
+                {plan.is_active && <span className="text-xs font-medium bg-success/10 text-success px-3 py-1.5 rounded-full">Aktiv</span>}
+              </div>
+            </div>
           </div>
         </div>
         {plan.target_calories && (

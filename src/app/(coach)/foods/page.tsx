@@ -164,9 +164,13 @@ export default async function NutritionPage({
                   <Link key={recipe.id} href={`/foods/recipe/${recipe.id}`}>
                     <div className="px-5 py-3 grid grid-cols-[1fr_120px_80px_80px_120px] gap-4 items-center hover:bg-surface-hover transition-colors">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
-                          <Salad className="w-5 h-5 text-success" />
-                        </div>
+                        {recipe.image_url ? (
+                          <img src={recipe.image_url} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+                            <Salad className="w-5 h-5 text-success" />
+                          </div>
+                        )}
                         <p className="text-sm font-medium text-text-primary truncate">{recipe.name_sv || recipe.name}</p>
                       </div>
                       <p className="text-xs text-text-secondary">
