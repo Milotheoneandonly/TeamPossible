@@ -227,7 +227,7 @@ export default async function ClientDetailPage({
           <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm text-text-muted">Kostschema</p>
-              <Link href="/meal-plans">
+              <Link href={`/meal-plans?assign=${clientId}`}>
                 <ArrowUpRight className="w-4 h-4 text-text-muted hover:text-text-primary" />
               </Link>
             </div>
@@ -247,7 +247,7 @@ export default async function ClientDetailPage({
               <>
                 <p className="text-sm text-text-muted mb-3">Inget kostschema tilldelat</p>
                 <Link
-                  href="/meal-plans"
+                  href={`/meal-plans?assign=${clientId}`}
                   className="text-sm font-medium text-primary-darker hover:underline"
                 >
                   Tilldela kostplan →
@@ -283,7 +283,7 @@ export default async function ClientDetailPage({
           <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm text-text-muted">Träning</p>
-              <Link href="/workouts">
+              <Link href={`/workouts?assign=${clientId}`}>
                 <ArrowUpRight className="w-4 h-4 text-text-muted hover:text-text-primary" />
               </Link>
             </div>
@@ -300,7 +300,7 @@ export default async function ClientDetailPage({
               <>
                 <p className="text-sm text-text-muted mb-3">Inget program tilldelat</p>
                 <Link
-                  href="/workouts"
+                  href={`/workouts?assign=${clientId}`}
                   className="text-sm font-medium text-primary-darker hover:underline"
                 >
                   Tilldela program →
