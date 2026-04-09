@@ -46,7 +46,7 @@ export default async function ClientTraningPage({
             <Link href={`/clients/${clientId}`} className="text-text-muted hover:text-text-primary pb-1">Översikt</Link>
             <Link href={`/clients/${clientId}/naring`} className="text-text-muted hover:text-text-primary pb-1">Näring</Link>
             <span className="font-medium text-primary-darker border-b-2 border-primary-darker pb-1">Träning</span>
-            <span className="text-text-muted pb-1">Framsteg</span>
+            <Link href={`/clients/${clientId}/framsteg`} className="text-text-muted hover:text-text-primary pb-1">Framsteg</Link>
           </div>
         </div>
       </div>

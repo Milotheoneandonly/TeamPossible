@@ -151,182 +151,115 @@ export default async function ClientDetailPage({
         </div>
       </div>
 
-      {/* Main grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column */}
-        <div className="space-y-4">
-          {/* Status message */}
-          <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
-            {hasNewCheckIn ? (
-              <>
-                <h2 className="text-xl font-bold text-text-primary">
-                  Snyggt! {profile?.first_name} har gjort en ny check-in
-                </h2>
-              </>
-            ) : (
-              <>
-                <p className="text-xs text-text-muted mb-1">Klientinställningar</p>
-                {client.notes ? (
-                  <p className="text-sm text-text-secondary">{client.notes}</p>
-                ) : (
-                  <p className="text-sm text-text-muted italic">Inga anteckningar</p>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Week + membership */}
-          <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
-            <p className="text-sm text-text-muted mb-1">Pågående medlemskap</p>
-            <p className="text-lg font-bold text-text-primary">
-              Vecka {weekNumber}
-            </p>
-            <p className="text-xs text-text-muted mt-1">
-              Start: {startDate.toLocaleDateString("sv-SE")}
-            </p>
-          </div>
-
-          {/* Messages */}
-          <div className="bg-white rounded-2xl border border-border p-4 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-text-muted" />
-              <span className="text-sm text-text-primary">
-                {unreadMessages ? `${unreadMessages} olästa meddelanden` : "0 olästa meddelanden"}
-              </span>
-            </div>
-            <ArrowUpRight className="w-4 h-4 text-text-muted" />
-          </div>
+      {/* Main grid — even 3×2 layout */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Notes / status */}
+        <div className="bg-white rounded-2xl border border-border p-5 shadow-sm flex flex-col">
+          <p className="text-xs text-text-muted mb-2">Klientinställningar</p>
+          {hasNewCheckIn ? (
+            <p className="text-sm font-semibold text-success">Snyggt! {profile?.first_name} har gjort en ny check-in</p>
+          ) : client.notes ? (
+            <p className="text-sm text-text-secondary leading-relaxed">{client.notes}</p>
+          ) : (
+            <p className="text-sm text-text-muted italic">Inga anteckningar</p>
+          )}
         </div>
 
-        {/* Middle column - Weight + Kostschema */}
-        <div className="space-y-4">
-          {/* Weight card */}
-          <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm text-text-muted">Vikt</p>
-              <ArrowUpRight className="w-4 h-4 text-text-muted" />
-            </div>
-            {weightDiff ? (
-              <>
-                <p className={`text-4xl font-bold ${
-                  Number(weightDiff) < 0 ? "text-text-primary" : "text-text-primary"
-                }`}>
-                  {Number(weightDiff) > 0 ? "+" : ""}{weightDiff} <span className="text-lg font-normal text-text-muted">kg</span>
-                </p>
-                <p className="text-sm text-text-muted mt-1">
-                  {currentWeight} kg totalt
-                </p>
-              </>
-            ) : currentWeight ? (
-              <>
-                <p className="text-4xl font-bold text-text-primary">
-                  {currentWeight} <span className="text-lg font-normal text-text-muted">kg</span>
-                </p>
-              </>
-            ) : (
-              <p className="text-sm text-text-muted">Ingen vikt registrerad</p>
-            )}
+        {/* Vikt */}
+        <div className="bg-white rounded-2xl border border-border p-5 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-text-muted">Vikt</p>
+            <Link href={`/clients/${clientId}/framsteg`}><ArrowUpRight className="w-4 h-4 text-text-muted hover:text-text-primary" /></Link>
           </div>
-
-          {/* Kostschema card */}
-          <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm text-text-muted">Kostschema</p>
-              <Link href={`/foods?tab=mallar&assign=${clientId}`}>
-                <ArrowUpRight className="w-4 h-4 text-text-muted hover:text-text-primary" />
-              </Link>
-            </div>
-            {activeMealPlan ? (
-              <>
-                <p className="text-4xl font-bold text-text-primary">
-                  {activeMealPlan.target_calories || "—"} <span className="text-lg font-normal text-text-muted">kcal</span>
-                </p>
-                <p className="text-sm text-text-muted mt-1">
-                  {mealCount} måltider/dag
-                </p>
-                <p className="text-xs text-text-secondary mt-2 truncate">
-                  {activeMealPlan.title}
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-text-muted mb-3">Inget kostschema tilldelat</p>
-                <Link
-                  href={`/foods?tab=mallar&assign=${clientId}`}
-                  className="text-sm font-medium text-primary-darker hover:underline"
-                >
-                  Tilldela kostplan →
-                </Link>
-              </>
-            )}
-          </div>
+          {weightDiff ? (
+            <>
+              <p className="text-3xl font-bold text-text-primary">{Number(weightDiff) > 0 ? "+" : ""}{weightDiff} <span className="text-sm font-normal text-text-muted">kg</span></p>
+              <p className="text-xs text-text-muted mt-1">{currentWeight} kg totalt</p>
+            </>
+          ) : currentWeight ? (
+            <p className="text-3xl font-bold text-text-primary">{currentWeight} <span className="text-sm font-normal text-text-muted">kg</span></p>
+          ) : (
+            <p className="text-sm text-text-muted">Ingen vikt registrerad</p>
+          )}
         </div>
 
-        {/* Right column - Check-in + Träning */}
-        <div className="space-y-4">
-          {/* Check-in card */}
-          <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm text-text-muted">Check-in</p>
-              <ArrowUpRight className="w-4 h-4 text-text-muted" />
-            </div>
-            {hasNewCheckIn ? (
-              <p className="text-2xl font-bold text-success">Ny check-in!</p>
-            ) : (
-              <>
-                <p className="text-4xl font-bold text-text-primary">
-                  {nextCheckInText}
-                </p>
-                <p className="text-sm text-text-muted mt-1">
-                  Nästa check-in
-                </p>
-              </>
-            )}
+        {/* Check-in */}
+        <div className="bg-white rounded-2xl border border-border p-5 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-text-muted">Check-in</p>
+            <Link href={`/clients/${clientId}/framsteg`}><ArrowUpRight className="w-4 h-4 text-text-muted hover:text-text-primary" /></Link>
           </div>
+          {hasNewCheckIn ? (
+            <p className="text-2xl font-bold text-success">Ny check-in!</p>
+          ) : (
+            <>
+              <p className="text-3xl font-bold text-text-primary">{nextCheckInText}</p>
+              <p className="text-xs text-text-muted mt-1">Nästa check-in</p>
+            </>
+          )}
+        </div>
 
-          {/* Träning card */}
-          <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm text-text-muted">Träning</p>
-              <Link href={`/workouts?assign=${clientId}`}>
-                <ArrowUpRight className="w-4 h-4 text-text-muted hover:text-text-primary" />
-              </Link>
-            </div>
-            {activeWorkoutPlan ? (
-              <>
-                <p className="text-4xl font-bold text-text-primary">
-                  {(activeWorkoutPlan as any).workout_days?.length || 0} <span className="text-lg font-normal text-text-muted">Pass</span>
-                </p>
-                <p className="text-xs text-text-secondary mt-2 truncate">
-                  {activeWorkoutPlan.title}
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-text-muted mb-3">Inget program tilldelat</p>
-                <Link
-                  href={`/workouts?assign=${clientId}`}
-                  className="text-sm font-medium text-primary-darker hover:underline"
-                >
-                  Tilldela program →
-                </Link>
-              </>
-            )}
+        {/* Medlemskap */}
+        <div className="bg-white rounded-2xl border border-border p-5 shadow-sm flex flex-col">
+          <p className="text-xs text-text-muted mb-2">Pågående medlemskap</p>
+          <p className="text-xl font-bold text-text-primary">Vecka {weekNumber}</p>
+          <p className="text-xs text-text-muted mt-1">Start: {startDate.toLocaleDateString("sv-SE")}</p>
+        </div>
+
+        {/* Kostschema */}
+        <div className="bg-white rounded-2xl border border-border p-5 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-text-muted">Kostschema</p>
+            <Link href={`/clients/${clientId}/naring`}><ArrowUpRight className="w-4 h-4 text-text-muted hover:text-text-primary" /></Link>
           </div>
+          {activeMealPlan ? (
+            <>
+              <p className="text-3xl font-bold text-text-primary">{activeMealPlan.target_calories || "—"} <span className="text-sm font-normal text-text-muted">kcal</span></p>
+              <p className="text-xs text-text-muted mt-1">{mealCount} måltider/dag</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-text-muted mb-2">Inget kostschema tilldelat</p>
+              <Link href={`/foods?tab=mallar&assign=${clientId}`} className="text-sm font-medium text-primary-darker hover:underline">Tilldela kostplan →</Link>
+            </>
+          )}
+        </div>
+
+        {/* Träning */}
+        <div className="bg-white rounded-2xl border border-border p-5 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-text-muted">Träning</p>
+            <Link href={`/clients/${clientId}/traning`}><ArrowUpRight className="w-4 h-4 text-text-muted hover:text-text-primary" /></Link>
+          </div>
+          {activeWorkoutPlan ? (
+            <>
+              <p className="text-3xl font-bold text-text-primary">{(activeWorkoutPlan as any).workout_days?.length || 0} <span className="text-sm font-normal text-text-muted">Pass</span></p>
+              <p className="text-xs text-text-muted mt-1">{activeWorkoutPlan.title}</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-text-muted mb-2">Inget program tilldelat</p>
+              <Link href={`/workouts?assign=${clientId}`} className="text-sm font-medium text-primary-darker hover:underline">Tilldela program →</Link>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Bottom section - Communication */}
-      <div className="mt-8">
-        <h3 className="text-sm font-medium text-text-muted mb-3">Kommunikation & Media</h3>
-        <div className="space-y-2">
-          <div className="bg-white rounded-2xl border border-border p-4 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <FileText className="w-5 h-5 text-text-muted" />
-              <span className="text-sm text-text-primary">Dokument</span>
-            </div>
-            <ArrowUpRight className="w-4 h-4 text-text-muted" />
+      {/* Bottom row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+        <div className="bg-white rounded-2xl border border-border p-4 shadow-sm flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-text-muted" />
+            <span className="text-sm text-text-primary">{unreadMessages ? `${unreadMessages} olästa meddelanden` : "0 olästa meddelanden"}</span>
           </div>
+          <ArrowUpRight className="w-4 h-4 text-text-muted" />
+        </div>
+        <div className="bg-white rounded-2xl border border-border p-4 shadow-sm flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-text-muted" />
+            <span className="text-sm text-text-primary">Dokument</span>
+          </div>
+          <ArrowUpRight className="w-4 h-4 text-text-muted" />
         </div>
       </div>
 

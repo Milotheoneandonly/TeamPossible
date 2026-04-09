@@ -47,7 +47,7 @@ export default async function ClientNaringPage({
             <Link href={`/clients/${clientId}`} className="text-text-muted hover:text-text-primary pb-1">Översikt</Link>
             <span className="font-medium text-primary-darker border-b-2 border-primary-darker pb-1">Näring</span>
             <Link href={`/clients/${clientId}/traning`} className="text-text-muted hover:text-text-primary pb-1">Träning</Link>
-            <span className="text-text-muted pb-1">Framsteg</span>
+            <Link href={`/clients/${clientId}/framsteg`} className="text-text-muted hover:text-text-primary pb-1">Framsteg</Link>
           </div>
         </div>
       </div>
