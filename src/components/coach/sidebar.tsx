@@ -26,7 +26,6 @@ const navItems = [
   { href: "/clients", label: "Klienter", icon: Users },
   { href: "/meal-plans", label: "Kostplaner", icon: Salad },
   { href: "/workouts", label: "Träning", icon: Dumbbell },
-  { href: "/exercises", label: "Övningar", icon: Library },
   { href: "/foods", label: "Näring", icon: Utensils },
   { href: "/check-ins", label: "Check-ins", icon: ClipboardCheck },
   { href: "/messages", label: "Meddelanden", icon: MessageSquare },
