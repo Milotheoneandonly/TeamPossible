@@ -24,9 +24,8 @@ import { useRouter } from "next/navigation";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/clients", label: "Klienter", icon: Users },
-  { href: "/meal-plans", label: "Kostplaner", icon: Salad },
+  { href: "/foods", label: "Näring", icon: Salad },
   { href: "/workouts", label: "Träning", icon: Dumbbell },
-  { href: "/foods", label: "Näring", icon: Utensils },
   { href: "/check-ins", label: "Check-ins", icon: ClipboardCheck },
   { href: "/messages", label: "Meddelanden", icon: MessageSquare },
 ];

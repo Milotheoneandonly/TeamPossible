@@ -1,0 +1,82 @@
+-- =============================================================
+-- EXPANDED SWEDISH FOOD DATABASE - More specific variants + spices
+-- =============================================================
+
+-- SPECIFIC DAIRY VARIANTS
+INSERT INTO public.foods (name, name_sv, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, category) VALUES
+('Quark natural 0.2%', 'Kvarg naturell 0.2%', 49, 10.0, 3.5, 0.2, 'Mejeri'),
+('Quark natural 2%', 'Kvarg naturell 2%', 72, 10.0, 4.0, 2.0, 'Mejeri'),
+('Quark vanilla 0.2%', 'Kvarg vanilj 0.2%', 58, 9.0, 6.0, 0.2, 'Mejeri'),
+('Skyr natural 0.2%', 'Skyr naturell 0.2%', 63, 11.0, 4.0, 0.2, 'Mejeri'),
+('Skyr vanilla', 'Skyr vanilj', 75, 10.0, 8.0, 0.2, 'Mejeri'),
+('Greek yogurt 0%', 'Grekisk yoghurt 0%', 57, 10.0, 4.0, 0, 'Mejeri'),
+('Greek yogurt 10%', 'Grekisk yoghurt 10%', 133, 5.0, 4.0, 10.0, 'Mejeri'),
+('Cottage cheese 1.5%', 'Keso 1.5%', 72, 12.0, 3.0, 1.5, 'Mejeri'),
+('Cream 15%', 'Grädde 15%', 162, 2.6, 3.5, 15.0, 'Mejeri'),
+('Cream 40%', 'Vispgrädde 40%', 345, 2.0, 2.8, 36.0, 'Mejeri'),
+('Cream fraiche 34%', 'Creme fraiche 34%', 340, 2.3, 2.8, 34.0, 'Mejeri'),
+('Milk 0.5%', 'Mjölk 0.5%', 37, 3.5, 5.0, 0.5, 'Mejeri'),
+
+-- SPECIFIC PROTEIN
+('Chicken breast grilled', 'Kycklingbröst grillad', 165, 31.0, 0, 3.6, 'Protein'),
+('Chicken breast smoked', 'Kycklingbröst rökt', 120, 24.0, 1.0, 2.0, 'Protein'),
+('Salmon smoked', 'Lax rökt', 183, 21.0, 0, 11.0, 'Protein'),
+('Tuna in water', 'Tonfisk i vatten', 97, 23.0, 0, 0.5, 'Protein'),
+('Tuna in oil', 'Tonfisk i olja', 190, 26.0, 0, 9.0, 'Protein'),
+('Egg yolk', 'Äggula', 322, 16.0, 1.0, 27.0, 'Protein'),
+('Turkey deli sliced', 'Kalkonskinka skivad', 100, 18.0, 2.0, 2.0, 'Protein'),
+('Ham', 'Skinka', 120, 18.0, 1.5, 4.5, 'Protein'),
+('Beef mince 5%', 'Nötfärs 5%', 137, 21.0, 0, 5.5, 'Protein'),
+('Tofu firm', 'Tofu fast', 144, 15.0, 2.0, 8.0, 'Protein'),
+('Tempeh', 'Tempeh', 192, 20.0, 7.6, 11.0, 'Protein'),
+
+-- CANNED/PRESERVED VEGETABLES
+('Corn canned', 'Majs, konserverad', 79, 2.5, 16.0, 0.7, 'Grönsaker'),
+('Tomatoes canned', 'Tomater, krossade konserv', 24, 1.0, 4.0, 0.1, 'Grönsaker'),
+('Beans canned', 'Bönor, konserverade', 100, 6.5, 16.0, 0.5, 'Baljväxter'),
+('Kidney beans canned', 'Kidneybönor, konserverade', 105, 6.9, 17.8, 0.5, 'Baljväxter'),
+('White beans canned', 'Vita bönor, konserverade', 90, 6.0, 15.0, 0.4, 'Baljväxter'),
+('Chickpeas canned', 'Kikärtor, konserverade', 120, 7.0, 18.0, 2.0, 'Baljväxter'),
+
+-- SPECIFIC CARBS
+('Rice cakes small', 'Riskakor små', 387, 7.0, 82.0, 2.5, 'Kolhydrater'),
+('Pasta wholegrain cooked', 'Pasta fullkorn kokt', 148, 6.0, 27.0, 1.5, 'Kolhydrater'),
+('Noodles egg cooked', 'Äggnudlar kokta', 138, 4.5, 25.0, 2.0, 'Kolhydrater'),
+('Bread rye', 'Rågbröd', 250, 8.0, 48.0, 1.5, 'Kolhydrater'),
+('Bagel', 'Bagel', 275, 10.0, 53.0, 1.5, 'Kolhydrater'),
+('Crispbread Finn Crisp', 'Finn Crisp knäckebröd', 340, 10.0, 62.0, 2.0, 'Kolhydrater'),
+('Pancakes', 'Pannkakor', 227, 6.5, 28.0, 10.0, 'Kolhydrater'),
+
+-- SPICES & SEASONINGS (Kryddor)
+('Salt', 'Salt', 0, 0, 0, 0, 'Kryddor'),
+('Black pepper', 'Svartpeppar', 251, 10.4, 64.0, 3.3, 'Kryddor'),
+('Paprika powder', 'Paprikapulver', 282, 14.0, 54.0, 13.0, 'Kryddor'),
+('Cumin', 'Spiskummin', 375, 18.0, 44.0, 22.0, 'Kryddor'),
+('Turmeric', 'Gurkmeja', 312, 10.0, 65.0, 3.3, 'Kryddor'),
+('Cinnamon', 'Kanel', 247, 4.0, 81.0, 1.2, 'Kryddor'),
+('Oregano dried', 'Oregano torkad', 265, 9.0, 69.0, 4.3, 'Kryddor'),
+('Basil dried', 'Basilika torkad', 233, 23.0, 48.0, 4.0, 'Kryddor'),
+('Thyme dried', 'Timjan torkad', 276, 9.1, 64.0, 7.4, 'Kryddor'),
+('Rosemary dried', 'Rosmarin torkad', 331, 5.0, 64.0, 15.0, 'Kryddor'),
+('Chili flakes', 'Chiliflingor', 282, 12.0, 50.0, 14.0, 'Kryddor'),
+('Garlic powder', 'Vitlökspulver', 331, 17.0, 73.0, 0.7, 'Kryddor'),
+('Onion powder', 'Lökpulver', 341, 10.0, 79.0, 1.0, 'Kryddor'),
+('Ginger powder', 'Ingefära pulver', 335, 9.0, 72.0, 4.2, 'Kryddor'),
+('Cayenne pepper', 'Cayennepeppar', 318, 12.0, 57.0, 17.0, 'Kryddor'),
+('Cardamom', 'Kardemumma', 311, 11.0, 68.0, 6.7, 'Kryddor'),
+('Nutmeg', 'Muskotnöt', 525, 6.0, 49.0, 36.0, 'Kryddor'),
+('Vanilla extract', 'Vaniljextrakt', 288, 0.1, 13.0, 0.1, 'Kryddor'),
+('Soy sauce', 'Sojasås', 53, 8.1, 4.9, 0, 'Kryddor'),
+('Fish sauce', 'Fisksås', 35, 5.0, 3.6, 0, 'Kryddor'),
+('Sriracha', 'Sriracha', 93, 2.0, 19.0, 0.9, 'Kryddor'),
+('Sambal oelek', 'Sambal oelek', 44, 1.5, 8.0, 0.3, 'Kryddor'),
+('Teriyaki sauce', 'Teriyakisås', 89, 6.0, 16.0, 0, 'Kryddor'),
+('Balsamic vinegar', 'Balsamvinäger', 88, 0.5, 17.0, 0, 'Kryddor'),
+('Apple cider vinegar', 'Äppelcidervinäger', 21, 0, 0.9, 0, 'Kryddor'),
+('Dijon mustard', 'Dijonsenap', 66, 4.0, 4.0, 4.0, 'Kryddor'),
+('Lemon juice', 'Citronsaft', 22, 0.4, 6.9, 0.2, 'Kryddor'),
+('Lime juice', 'Limesaft', 25, 0.4, 8.4, 0.1, 'Kryddor'),
+('Coconut aminos', 'Kokosaminos', 20, 0, 5.0, 0, 'Kryddor'),
+('Bouillon cube', 'Buljongtärning', 235, 14.0, 20.0, 11.0, 'Kryddor'),
+('Nutritional yeast', 'Näringsjäst', 360, 50.0, 36.0, 5.0, 'Kryddor'),
+('Cocoa powder', 'Kakaopulver', 228, 20.0, 58.0, 14.0, 'Kryddor');

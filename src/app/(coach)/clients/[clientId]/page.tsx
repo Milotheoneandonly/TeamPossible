@@ -227,7 +227,7 @@ export default async function ClientDetailPage({
           <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm text-text-muted">Kostschema</p>
-              <Link href={`/meal-plans?assign=${clientId}`}>
+              <Link href={`/foods?tab=mallar&assign=${clientId}`}>
                 <ArrowUpRight className="w-4 h-4 text-text-muted hover:text-text-primary" />
               </Link>
             </div>
@@ -247,7 +247,7 @@ export default async function ClientDetailPage({
               <>
                 <p className="text-sm text-text-muted mb-3">Inget kostschema tilldelat</p>
                 <Link
-                  href={`/meal-plans?assign=${clientId}`}
+                  href={`/foods?tab=mallar&assign=${clientId}`}
                   className="text-sm font-medium text-primary-darker hover:underline"
                 >
                   Tilldela kostplan →
