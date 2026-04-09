@@ -44,7 +44,7 @@ export default async function MealsPage() {
           meal_items (
             id, amount_g, servings, sort_order,
             food:foods (name, name_sv, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g),
-            recipe:recipes (name, name_sv, total_calories, total_protein, total_carbs, total_fat, servings)
+            recipe:recipes (name, name_sv, total_calories, total_protein, total_carbs, total_fat, servings, image_url)
           )
         )
       )
@@ -149,9 +149,14 @@ export default async function MealsPage() {
                           ? `${item.amount_g || 100}g`
                           : `${item.servings || 1} portion${(item.servings || 1) > 1 ? "er" : ""}`;
 
+                        const recipeImage = item.recipe?.image_url || null;
+
                         return (
-                          <div key={item.id} className="flex items-center justify-between py-1">
-                            <div>
+                          <div key={item.id} className="flex items-center gap-3 py-1.5">
+                            {recipeImage ? (
+                              <img src={recipeImage} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                            ) : null}
+                            <div className="flex-1 min-w-0">
                               <p className="text-sm text-text-primary">{foodName}</p>
                               <p className="text-xs text-text-muted">{amount}</p>
                             </div>

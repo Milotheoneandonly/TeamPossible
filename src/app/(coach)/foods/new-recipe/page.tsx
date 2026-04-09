@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Loader2, Salad, Search, X, Plus } from "lucide-react";
+import { ArrowLeft, Loader2, Salad, Search, X, Plus, Camera, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 const MEAL_TAGS = [
@@ -41,8 +41,11 @@ export default function NewRecipePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearch, setShowSearch] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const imageRef = useRef<HTMLInputElement>(null);
 
   const supabase = createClient();
   const router = useRouter();
@@ -122,6 +125,18 @@ export default function NewRecipePage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
+    // Upload image if selected
+    let imageUrl = null;
+    if (imageFile) {
+      const fileExt = imageFile.name.split(".").pop();
+      const filePath = `recipes/${user.id}/${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage.from("recipe-images").upload(filePath, imageFile);
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage.from("recipe-images").getPublicUrl(filePath);
+        imageUrl = publicUrl;
+      }
+    }
+
     // Create recipe
     const { data: recipe, error: recipeError } = await supabase
       .from("recipes")
@@ -139,6 +154,7 @@ export default function NewRecipePage() {
         total_protein: Math.round(totals.protein * 10) / 10,
         total_carbs: Math.round(totals.carbs * 10) / 10,
         total_fat: Math.round(totals.fat * 10) / 10,
+        image_url: imageUrl,
       })
       .select()
       .single();
@@ -177,18 +193,60 @@ export default function NewRecipePage() {
       <h1 className="text-2xl font-bold text-text-primary mb-6">Skapa recept</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Name + macro summary */}
+        {/* Image + Name + macro summary */}
         <Card>
           <CardContent>
-            <Input
-              id="name"
-              label="Receptets namn"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              placeholder="T.ex. Ägg på majskakor"
-            />
-            <div className="flex gap-4 mt-3 text-sm">
+            <div className="flex gap-4 mb-4">
+              {/* Image upload */}
+              <div className="shrink-0">
+                {imagePreview ? (
+                  <div className="relative w-24 h-24 rounded-xl overflow-hidden group">
+                    <img src={imagePreview} alt="" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => { setImageFile(null); setImagePreview(null); }}
+                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                    >
+                      <Trash2 className="w-5 h-5 text-white" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => imageRef.current?.click()}
+                    className="w-24 h-24 rounded-xl border-2 border-dashed border-border bg-surface flex flex-col items-center justify-center hover:border-primary/50 transition-colors"
+                  >
+                    <Camera className="w-6 h-6 text-text-muted mb-1" />
+                    <span className="text-[10px] text-text-muted">Lägg till bild</span>
+                  </button>
+                )}
+                <input
+                  ref={imageRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setImageFile(file);
+                      setImagePreview(URL.createObjectURL(file));
+                    }
+                  }}
+                  className="hidden"
+                />
+              </div>
+
+              <div className="flex-1">
+                <Input
+                  id="name"
+                  label="Receptets namn"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  placeholder="T.ex. Ägg på majskakor"
+                />
+              </div>
+            </div>
+            <div className="flex gap-4 text-sm">
               <span className="text-error font-medium">Protein {Math.round(totals.protein)}g</span>
               <span className="text-success font-medium">Kolhydrater {Math.round(totals.carbs)}g</span>
               <span className="text-accent font-medium">Fett {Math.round(totals.fat)}g</span>

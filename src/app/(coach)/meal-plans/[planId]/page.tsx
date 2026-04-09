@@ -87,7 +87,7 @@ export default function MealPlanEditorPage() {
             meal_items (
               id, amount_g, servings, sort_order,
               food:foods (id, name, name_sv, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g),
-              recipe:recipes (id, name, name_sv, total_calories, total_protein, total_carbs, total_fat)
+              recipe:recipes (id, name, name_sv, total_calories, total_protein, total_carbs, total_fat, image_url)
             )
           )
         )
@@ -430,12 +430,18 @@ export default function MealPlanEditorPage() {
                               ? Math.round((item.recipe.total_calories || 0) * (item.servings || 1))
                               : item.food ? Math.round((item.food.calories_per_100g || 0) * ((item.amount_g || 100) / 100)) : 0;
 
+                            const itemImage = item.recipe?.image_url || null;
+
                             return (
                               <div key={item.id} className="flex items-center justify-between py-1 group">
                                 <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded bg-success/10 flex items-center justify-center">
-                                    <Salad className="w-3.5 h-3.5 text-success" />
-                                  </div>
+                                  {itemImage ? (
+                                    <img src={itemImage} alt="" className="w-8 h-8 rounded-lg object-cover shrink-0" />
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+                                      <Salad className="w-4 h-4 text-success" />
+                                    </div>
+                                  )}
                                   <span className="text-sm text-text-primary">{itemName}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
