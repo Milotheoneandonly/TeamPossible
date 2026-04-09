@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Plus, Dumbbell, UserPlus, Library } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ExerciseList } from "@/components/coach/exercise-list";
+import { DeleteWorkoutPlanButton } from "@/components/coach/delete-button";
 
 export default async function WorkoutPlansPage({
   searchParams,
@@ -98,10 +99,11 @@ export default async function WorkoutPlansPage({
                 <Link key={plan.id} href={planLink(plan.id)}>
                   <div className={`bg-white rounded-2xl border p-5 shadow-sm hover:shadow-md transition-all ${assignClientId ? "border-primary/30 hover:border-primary" : "border-border hover:border-primary/30"}`}>
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary-lighter flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-xl bg-primary-lighter flex items-center justify-center shrink-0">
                         <Dumbbell className="w-5 h-5 text-primary-darker" />
                       </div>
-                      <h3 className="font-semibold text-text-primary truncate">{plan.title}</h3>
+                      <h3 className="font-semibold text-text-primary truncate flex-1">{plan.title}</h3>
+                      {!assignClientId && <DeleteWorkoutPlanButton planId={plan.id} planTitle={plan.title} />}
                     </div>
                     <p className="text-xs text-text-muted">{plan.workout_days?.length || 0} träningsdagar</p>
                     {assignClientId && <p className="text-xs text-primary-darker font-medium mt-3">Klicka för att tilldela →</p>}

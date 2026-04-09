@@ -2,8 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getRecipes } from "@/actions/recipes";
 import { getMealPlanTemplates } from "@/actions/meal-plans";
 import Link from "next/link";
-import { Plus, Salad, Utensils, Trash2 } from "lucide-react";
+import { Plus, Salad, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DeleteMealPlanButton } from "@/components/coach/delete-button";
 
 const MEAL_TAG_LABELS: Record<string, string> = {
   breakfast: "Frukost", lunch: "Lunch", dinner: "Middag", snack: "Mellanmål",
@@ -46,11 +47,14 @@ export default async function NutritionPage({
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-2xl font-bold text-text-primary">Näring</h1>
         <div className="flex gap-2">
-          {activeTab === "mallar" && (
+          {activeTab === "mallar" && !assignClientId && (
             <Link href="/meal-plans/new"><Button><Plus className="w-4 h-4" /> Ny kostplan</Button></Link>
           )}
           {activeTab === "recept" && (
             <Link href="/foods/new-recipe"><Button><Plus className="w-4 h-4" /> Skapa recept</Button></Link>
+          )}
+          {activeTab === "livsmedel" && (
+            <Link href="/foods/new-food"><Button><Plus className="w-4 h-4" /> Lägg till ingrediens</Button></Link>
           )}
         </div>
       </div>
@@ -94,10 +98,11 @@ export default async function NutritionPage({
                 <Link key={plan.id} href={assignClientId ? `/meal-plans/${plan.id}?assign=${assignClientId}` : `/meal-plans/${plan.id}`}>
                   <div className={`bg-white rounded-2xl border p-5 shadow-sm hover:shadow-md transition-all ${assignClientId ? "border-primary/30 hover:border-primary" : "border-border hover:border-primary/30"}`}>
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center shrink-0">
                         <Salad className="w-5 h-5 text-success" />
                       </div>
-                      <h3 className="font-semibold text-text-primary truncate">{plan.title}</h3>
+                      <h3 className="font-semibold text-text-primary truncate flex-1">{plan.title}</h3>
+                      {!assignClientId && <DeleteMealPlanButton planId={plan.id} planTitle={plan.title} />}
                     </div>
                     {plan.target_calories && (
                       <div className="flex gap-3 text-xs text-text-muted">

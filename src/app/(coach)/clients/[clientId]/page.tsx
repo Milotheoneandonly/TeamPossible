@@ -139,8 +139,8 @@ export default async function ClientDetailPage({
           {/* Sub-tabs */}
           <div className="flex gap-6 mt-3 text-sm">
             <span className="font-medium text-text-primary border-b-2 border-primary-darker pb-1">Översikt</span>
-            <Link href={`/meal-plans`} className="text-text-muted hover:text-text-primary transition-colors pb-1">Näring</Link>
-            <Link href={`/workouts`} className="text-text-muted hover:text-text-primary transition-colors pb-1">Träning</Link>
+            <Link href={`/clients/${clientId}/naring`} className="text-text-muted hover:text-text-primary transition-colors pb-1">Näring</Link>
+            <Link href={`/clients/${clientId}/traning`} className="text-text-muted hover:text-text-primary transition-colors pb-1">Träning</Link>
             <span className="text-text-muted pb-1">Framsteg</span>
           </div>
         </div>
