@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Utensils,
   Library,
+  FolderOpen,
   LogOut,
   Menu,
   X,
@@ -26,6 +27,7 @@ const navItems = [
   { href: "/clients", label: "Klienter", icon: Users },
   { href: "/foods", label: "Näring", icon: Salad },
   { href: "/workouts", label: "Träning", icon: Dumbbell },
+  { href: "/content", label: "Innehåll", icon: FolderOpen },
   { href: "/check-ins", label: "Check-ins", icon: ClipboardCheck },
   { href: "/messages", label: "Meddelanden", icon: MessageSquare },
 ];
