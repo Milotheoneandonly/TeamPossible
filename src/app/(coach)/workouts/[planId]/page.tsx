@@ -5,7 +5,10 @@ import { createClient } from "@/lib/supabase/client";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Dumbbell, Loader2, UserPlus, CheckCircle } from "lucide-react";
+import {
+  ArrowLeft, Dumbbell, Loader2, UserPlus, CheckCircle,
+  Plus, Search, X, GripVertical, Play, MoreHorizontal,
+} from "lucide-react";
 
 export default function WorkoutPlanDetailPage() {
   const params = useParams();
@@ -14,16 +17,22 @@ export default function WorkoutPlanDetailPage() {
   const assignClientId = searchParams.get("assign");
 
   const [plan, setPlan] = useState<any>(null);
+  const [exercises, setExercises] = useState<any[]>([]);
   const [clientName, setClientName] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [assigned, setAssigned] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeDay, setActiveDay] = useState<string | null>(null);
+  const [addingDayName, setAddingDayName] = useState("");
+  const [showAddDay, setShowAddDay] = useState(false);
 
   const supabase = createClient();
   const router = useRouter();
 
   useEffect(() => {
     loadPlan();
+    loadExercises();
     if (assignClientId) loadClientName();
   }, []);
 
@@ -44,7 +53,19 @@ export default function WorkoutPlanDetailPage() {
       .single();
 
     setPlan(data);
+    if (data?.workout_days?.length > 0) {
+      const sorted = [...data.workout_days].sort((a: any, b: any) => (a.sort_order ?? a.day_number) - (b.sort_order ?? b.day_number));
+      setActiveDay(sorted[0].id);
+    }
     setLoading(false);
+  }
+
+  async function loadExercises() {
+    const { data } = await supabase
+      .from("exercises")
+      .select("id, name, name_sv, muscle_groups, equipment, video_url")
+      .order("name");
+    setExercises(data || []);
   }
 
   async function loadClientName() {
@@ -54,200 +75,298 @@ export default function WorkoutPlanDetailPage() {
       .select("profile:profiles!clients_profile_id_fkey(first_name, last_name)")
       .eq("id", assignClientId)
       .single();
-    if (data?.profile) {
-      setClientName(`${(data.profile as any).first_name} ${(data.profile as any).last_name}`);
-    }
+    if (data?.profile) setClientName(`${(data.profile as any).first_name} ${(data.profile as any).last_name}`);
   }
 
   async function handleAssignToClient() {
     if (!assignClientId || !plan) return;
     setSaving(true);
-
-    // Deactivate current active plan
-    await supabase
-      .from("workout_plans")
-      .update({ is_active: false })
-      .eq("client_id", assignClientId)
-      .eq("is_active", true);
+    await supabase.from("workout_plans").update({ is_active: false }).eq("client_id", assignClientId).eq("is_active", true);
 
     if (plan.is_template) {
-      // Duplicate template for client
-      const { data: newPlan } = await supabase
-        .from("workout_plans")
-        .insert({
-          coach_id: plan.coach_id,
-          client_id: assignClientId,
-          title: plan.title,
-          description: plan.description,
-          is_template: false,
-          is_active: true,
-        })
-        .select()
-        .single();
+      const { data: newPlan } = await supabase.from("workout_plans").insert({
+        coach_id: plan.coach_id, client_id: assignClientId, title: plan.title, description: plan.description, is_template: false, is_active: true,
+      }).select().single();
 
       if (newPlan) {
         for (const day of (plan.workout_days || [])) {
-          const { data: newDay } = await supabase
-            .from("workout_days")
-            .insert({ plan_id: newPlan.id, day_number: day.day_number, name: day.name, sort_order: day.sort_order })
-            .select()
-            .single();
-
+          const { data: newDay } = await supabase.from("workout_days").insert({
+            plan_id: newPlan.id, day_number: day.day_number, name: day.name, sort_order: day.sort_order,
+          }).select().single();
           if (newDay) {
             for (const we of (day.workout_exercises || [])) {
               await supabase.from("workout_exercises").insert({
-                workout_day_id: newDay.id,
-                exercise_id: we.exercise?.id,
-                sort_order: we.sort_order,
-                sets: we.sets,
-                reps: we.reps,
-                rest_seconds: we.rest_seconds,
-                tempo: we.tempo,
-                notes: we.notes,
-                superset_group: we.superset_group,
+                workout_day_id: newDay.id, exercise_id: we.exercise?.id, sort_order: we.sort_order,
+                sets: we.sets, reps: we.reps, rest_seconds: we.rest_seconds, tempo: we.tempo, notes: we.notes, superset_group: we.superset_group,
               });
             }
           }
         }
       }
     } else {
-      await supabase
-        .from("workout_plans")
-        .update({ client_id: assignClientId, is_active: true })
-        .eq("id", planId);
+      await supabase.from("workout_plans").update({ client_id: assignClientId, is_active: true }).eq("id", planId);
     }
-
     setSaving(false);
     setAssigned(true);
   }
 
-  if (loading) {
-    return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+  async function addExerciseToDay(exerciseId: string) {
+    if (!activeDay) return;
+    const day = (plan?.workout_days || []).find((d: any) => d.id === activeDay);
+    const maxSort = (day?.workout_exercises || []).reduce((max: number, we: any) => Math.max(max, we.sort_order || 0), -1);
+
+    await supabase.from("workout_exercises").insert({
+      workout_day_id: activeDay, exercise_id: exerciseId, sort_order: maxSort + 1, sets: 3, reps: "10", rest_seconds: 60,
+    });
+    loadPlan();
   }
+
+  async function removeExercise(weId: string) {
+    await supabase.from("workout_exercises").delete().eq("id", weId);
+    loadPlan();
+  }
+
+  async function updateExercise(weId: string, field: string, value: any) {
+    await supabase.from("workout_exercises").update({ [field]: value }).eq("id", weId);
+  }
+
+  async function addNewDay() {
+    if (!addingDayName.trim()) return;
+    const maxSort = (plan?.workout_days || []).reduce((max: number, d: any) => Math.max(max, d.sort_order ?? d.day_number ?? 0), 0);
+    const { data: newDay } = await supabase.from("workout_days").insert({
+      plan_id: planId, day_number: maxSort + 1, name: addingDayName, sort_order: maxSort + 1,
+    }).select().single();
+    setAddingDayName("");
+    setShowAddDay(false);
+    loadPlan();
+    if (newDay) setActiveDay(newDay.id);
+  }
+
+  const filteredExercises = exercises.filter((ex) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (ex.name || "").toLowerCase().includes(q) || (ex.name_sv || "").toLowerCase().includes(q) || (ex.muscle_groups || []).some((mg: string) => mg.toLowerCase().includes(q));
+  });
+
+  if (loading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
   if (assigned) {
     return (
       <div className="max-w-lg mx-auto px-4 py-16 text-center">
-        <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-4">
-          <CheckCircle className="w-8 h-8 text-success" />
-        </div>
+        <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-4"><CheckCircle className="w-8 h-8 text-success" /></div>
         <h2 className="text-xl font-bold text-text-primary">Program tilldelat!</h2>
         <p className="text-text-secondary mt-2">{plan?.title} har tilldelats till {clientName}</p>
-        <Button className="mt-6" onClick={() => router.push(`/clients/${assignClientId}`)}>
-          Tillbaka till klient
-        </Button>
+        <Button className="mt-6" onClick={() => router.push(`/clients/${assignClientId}`)}>Tillbaka till klient</Button>
       </div>
     );
   }
 
-  if (!plan) {
-    return <div className="max-w-4xl mx-auto px-4 py-8 text-center"><p className="text-text-muted">Program hittades inte.</p></div>;
-  }
+  if (!plan) return <div className="max-w-4xl mx-auto px-4 py-8 text-center"><p className="text-text-muted">Program hittades inte.</p></div>;
 
   const days = (plan.workout_days || []).sort((a: any, b: any) => (a.sort_order ?? a.day_number) - (b.sort_order ?? b.day_number));
+  const currentDay = days.find((d: any) => d.id === activeDay);
+  const currentExercises = currentDay ? (currentDay.workout_exercises || []).sort((a: any, b: any) => a.sort_order - b.sort_order) : [];
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <Link
-        href={assignClientId ? `/clients/${assignClientId}` : "/workouts"}
-        className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary mb-6 transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        {assignClientId ? "Tillbaka till klient" : "Alla program"}
-      </Link>
-
-      {/* Assign banner */}
-      {assignClientId && (
-        <div className="bg-primary-lighter border border-primary/20 rounded-2xl p-4 mb-6 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-primary-darker">
-              Tilldela till {clientName}
-            </p>
-            <p className="text-xs text-primary-darker/70">
-              Klicka knappen för att tilldela detta program
-            </p>
-          </div>
-          <Button onClick={handleAssignToClient} disabled={saving}>
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-            {saving ? "Tilldelar..." : "Tilldela program"}
-          </Button>
-        </div>
-      )}
-
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-text-primary">{plan.title}</h1>
-            {plan.description && <p className="text-text-secondary mt-1">{plan.description}</p>}
-          </div>
-          <div className="flex gap-2">
-            {plan.is_template && <span className="text-xs font-medium bg-primary-lighter text-primary-darker px-3 py-1.5 rounded-full">Mall</span>}
-            {plan.is_active && <span className="text-xs font-medium bg-success/10 text-success px-3 py-1.5 rounded-full">Aktiv</span>}
-          </div>
-        </div>
-      </div>
-
-      {/* Days */}
-      <div className="space-y-6">
-        {days.map((day: any) => {
-          const exercises = (day.workout_exercises || []).sort((a: any, b: any) => a.sort_order - b.sort_order);
-
-          return (
-            <div key={day.id} className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
-              <div className="px-5 py-3 bg-surface border-b border-border flex items-center justify-between">
-                <h2 className="font-semibold text-text-primary">{day.name || `Dag ${day.day_number}`}</h2>
-                <span className="text-xs text-text-muted">{exercises.length} övningar</span>
-              </div>
-
-              {exercises.length === 0 ? (
-                <div className="p-5 text-center">
-                  <p className="text-sm text-text-muted italic">Inga övningar tillagda än</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-border-light">
-                  {exercises.map((we: any, idx: number) => {
-                    const ex = we.exercise;
-                    return (
-                      <div key={we.id} className="px-5 py-3 flex items-center gap-4">
-                        <div className="w-9 h-9 rounded-lg bg-primary-lighter flex items-center justify-center shrink-0">
-                          <span className="text-xs font-bold text-primary-darker">{idx + 1}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-text-primary text-sm">{ex?.name_sv || ex?.name || "Övning"}</p>
-                          <div className="flex gap-3 mt-0.5 text-xs text-text-muted">
-                            {ex?.muscle_groups?.map((mg: string) => <span key={mg}>{mg}</span>)}
-                          </div>
-                        </div>
-                        <div className="flex gap-4 text-sm text-text-secondary shrink-0">
-                          <div className="text-center">
-                            <p className="text-xs text-text-muted">Set</p>
-                            <p className="font-medium">{we.sets}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-xs text-text-muted">Reps</p>
-                            <p className="font-medium">{we.reps}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-xs text-text-muted">Vila</p>
-                            <p className="font-medium">{we.rest_seconds}s</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+    <div className="h-[calc(100vh-64px)] lg:h-screen flex flex-col">
+      {/* Top bar */}
+      <div className="bg-white border-b border-border px-4 py-3 shrink-0">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <div className="flex items-center gap-4">
+            <Link href={assignClientId ? `/clients/${assignClientId}` : "/workouts"} className="text-text-secondary hover:text-text-primary">
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+            <div>
+              <h1 className="font-bold text-text-primary">{plan.title}</h1>
+              {plan.is_template && <span className="text-xs text-primary-darker">Mall</span>}
             </div>
-          );
-        })}
+          </div>
+          {assignClientId && (
+            <Button onClick={handleAssignToClient} disabled={saving} size="sm">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+              {saving ? "Tilldelar..." : `Tilldela till ${clientName}`}
+            </Button>
+          )}
+        </div>
       </div>
 
-      {days.length === 0 && (
-        <div className="bg-white rounded-2xl border border-border p-8 text-center shadow-sm">
-          <Dumbbell className="w-10 h-10 text-text-muted mx-auto mb-3" />
-          <p className="text-text-muted">Inga övningar tillagda än.</p>
+      {/* Day tabs */}
+      <div className="bg-white border-b border-border px-4 shrink-0 overflow-x-auto">
+        <div className="flex items-center gap-1 max-w-7xl mx-auto">
+          {days.map((day: any) => (
+            <button
+              key={day.id}
+              onClick={() => setActiveDay(day.id)}
+              className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                activeDay === day.id
+                  ? "text-primary-darker border-primary-darker"
+                  : "text-text-muted border-transparent hover:text-text-primary"
+              }`}
+            >
+              {day.name || `Dag ${day.day_number}`}
+            </button>
+          ))}
+          <button
+            onClick={() => setShowAddDay(true)}
+            className="px-3 py-3 text-text-muted hover:text-text-primary"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Add day modal */}
+      {showAddDay && (
+        <div className="bg-surface border-b border-border px-4 py-3 shrink-0">
+          <div className="flex items-center gap-2 max-w-7xl mx-auto">
+            <input
+              value={addingDayName}
+              onChange={(e) => setAddingDayName(e.target.value)}
+              placeholder="Passnamn, t.ex. Lower 🦵"
+              autoFocus
+              className="flex-1 rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+              onKeyDown={(e) => e.key === "Enter" && addNewDay()}
+            />
+            <Button size="sm" onClick={addNewDay} disabled={!addingDayName.trim()}>Skapa</Button>
+            <button onClick={() => setShowAddDay(false)} className="text-text-muted hover:text-text-primary p-1"><X className="w-4 h-4" /></button>
+          </div>
         </div>
       )}
+
+      {/* Main content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Exercise library (left sidebar) */}
+        <div className="w-72 bg-white border-r border-border flex flex-col shrink-0 hidden lg:flex">
+          <div className="p-3 space-y-2 border-b border-border">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Sök"
+                className="w-full rounded-lg border border-border pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+              />
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {filteredExercises.length === 0 ? (
+              <div className="p-4 text-center">
+                <p className="text-xs text-text-muted">Inga övningar hittades</p>
+                <Link href="/workouts/new-exercise" className="text-xs text-primary-darker hover:underline mt-1 inline-block">Lägg till övning →</Link>
+              </div>
+            ) : (
+              filteredExercises.map((ex) => (
+                <button
+                  key={ex.id}
+                  onClick={() => addExerciseToDay(ex.id)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-surface-hover transition-colors text-left border-b border-border-light"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-primary-lighter flex items-center justify-center shrink-0">
+                    {ex.video_url ? (
+                      <Play className="w-4 h-4 text-primary-darker" />
+                    ) : (
+                      <Dumbbell className="w-4 h-4 text-primary-darker" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-text-primary truncate">{ex.name_sv || ex.name}</p>
+                    <p className="text-[10px] text-text-muted truncate">
+                      {ex.muscle_groups?.join(", ") || ""}{ex.equipment?.length ? ` · ${ex.equipment[0]}` : ""}
+                    </p>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Day exercises (main area) */}
+        <div className="flex-1 overflow-y-auto bg-surface p-4 lg:p-6">
+          {!activeDay ? (
+            <div className="text-center py-16">
+              <Dumbbell className="w-12 h-12 text-text-muted mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-text-primary">Inga pass</h3>
+              <p className="text-text-secondary mt-1">Skapa ett pass för att börja</p>
+              <Button className="mt-4" onClick={() => setShowAddDay(true)}><Plus className="w-4 h-4" /> Skapa pass</Button>
+            </div>
+          ) : currentExercises.length === 0 ? (
+            <div className="text-center py-16">
+              <Dumbbell className="w-12 h-12 text-text-muted mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-text-primary">Inga pass</h3>
+              <p className="text-text-secondary mt-1">Välj övningar från listan till vänster</p>
+              {/* Mobile: show add button */}
+              <div className="lg:hidden mt-4">
+                <Link href="/workouts/new-exercise"><Button variant="outline"><Plus className="w-4 h-4" /> Lägg till övning</Button></Link>
+              </div>
+            </div>
+          ) : (
+            <div className="max-w-3xl space-y-2">
+              {currentExercises.map((we: any, idx: number) => {
+                const ex = we.exercise;
+                return (
+                  <div key={we.id} className="bg-white rounded-xl border border-border p-3 shadow-sm flex items-center gap-3">
+                    {/* Thumbnail */}
+                    <div className="w-12 h-12 rounded-lg bg-primary-lighter flex items-center justify-center shrink-0">
+                      {ex?.video_url ? (
+                        <a href={ex.video_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                          <Play className="w-5 h-5 text-primary-darker" />
+                        </a>
+                      ) : (
+                        <Dumbbell className="w-5 h-5 text-primary-darker" />
+                      )}
+                    </div>
+
+                    {/* Name */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-text-primary truncate">{ex?.name_sv || ex?.name || "Övning"}</p>
+                      {we.notes && <p className="text-[10px] text-text-muted truncate">{we.notes}</p>}
+                    </div>
+
+                    {/* Set */}
+                    <div className="text-center w-16 shrink-0">
+                      <p className="text-[10px] text-text-muted">Set</p>
+                      <input
+                        type="number"
+                        defaultValue={we.sets}
+                        onBlur={(e) => updateExercise(we.id, "sets", parseInt(e.target.value) || 3)}
+                        className="w-12 text-center text-sm font-medium border border-border rounded-lg px-1 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                      />
+                    </div>
+
+                    {/* Reps */}
+                    <div className="text-center w-20 shrink-0">
+                      <p className="text-[10px] text-text-muted">Repetitioner</p>
+                      <input
+                        type="text"
+                        defaultValue={we.reps}
+                        onBlur={(e) => updateExercise(we.id, "reps", e.target.value || "10")}
+                        className="w-16 text-center text-sm font-medium border border-border rounded-lg px-1 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                      />
+                    </div>
+
+                    {/* Rest */}
+                    <div className="text-center w-16 shrink-0">
+                      <p className="text-[10px] text-text-muted">Vila</p>
+                      <input
+                        type="number"
+                        defaultValue={we.rest_seconds}
+                        onBlur={(e) => updateExercise(we.id, "rest_seconds", parseInt(e.target.value) || 60)}
+                        className="w-12 text-center text-sm font-medium border border-border rounded-lg px-1 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                      />
+                    </div>
+
+                    {/* Remove */}
+                    <button onClick={() => removeExercise(we.id)} className="text-text-muted hover:text-error p-1 shrink-0">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
