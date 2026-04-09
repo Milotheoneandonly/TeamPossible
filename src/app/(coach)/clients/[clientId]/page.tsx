@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AvatarUpload } from "@/components/coach/avatar-upload";
+import { DeleteClientButton } from "@/components/coach/delete-client-button";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -145,7 +146,7 @@ export default async function ClientDetailPage({
             <span className="font-medium text-text-primary border-b-2 border-primary-darker pb-1">Översikt</span>
             <Link href={`/clients/${clientId}/naring`} className="text-text-muted hover:text-text-primary transition-colors pb-1">Näring</Link>
             <Link href={`/clients/${clientId}/traning`} className="text-text-muted hover:text-text-primary transition-colors pb-1">Träning</Link>
-            <span className="text-text-muted pb-1">Framsteg</span>
+            <Link href={`/clients/${clientId}/framsteg`} className="text-text-muted hover:text-text-primary transition-colors pb-1">Framsteg</Link>
           </div>
         </div>
       </div>
@@ -327,6 +328,11 @@ export default async function ClientDetailPage({
             <ArrowUpRight className="w-4 h-4 text-text-muted" />
           </div>
         </div>
+      </div>
+
+      {/* Danger zone */}
+      <div className="mt-12 pt-6 border-t border-border">
+        <DeleteClientButton clientId={clientId} clientName={`${profile?.first_name} ${profile?.last_name}`} />
       </div>
     </div>
   );
