@@ -492,10 +492,6 @@ export default function MealPlanEditorPage() {
                         <div className="space-y-1.5 mb-2">
                           {items.map((item: any) => {
                             const itemName = item.recipe ? item.recipe.name_sv || item.recipe.name : item.food ? item.food.name_sv || item.food.name : "Okänt";
-                            const itemKcal = item.recipe
-                              ? Math.round((item.recipe.total_calories || 0) * (item.servings || 1))
-                              : item.food ? Math.round((item.food.calories_per_100g || 0) * ((item.amount_g || 100) / 100)) : 0;
-
                             const itemImage = item.recipe?.image_url || null;
 
                             return (
@@ -511,7 +507,6 @@ export default function MealPlanEditorPage() {
                                   <span className="text-sm text-text-primary">{itemName}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs text-text-muted">{itemKcal} kcal</span>
                                   <button onClick={() => removeItem(item.id)} className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-error transition-all p-1">
                                     <X className="w-3.5 h-3.5" />
                                   </button>
