@@ -26,9 +26,9 @@ export async function getMealPlan(planId: string) {
         meals (
           id, meal_type, name, sort_order,
           meal_items (
-            id, amount_g, servings, sort_order,
+            id, amount_g, servings, sort_order, calories, protein, carbs, fat, notes,
             food:foods (id, name, name_sv, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g),
-            recipe:recipes (id, name, name_sv, total_calories, total_protein, total_carbs, total_fat, servings)
+            recipe:recipes (id, name, name_sv, total_calories, total_protein, total_carbs, total_fat, servings, image_url)
           )
         )
       )
@@ -65,32 +65,22 @@ export async function createMealPlan(data: {
 
   if (error) throw error;
 
-  // Create 7 default days
-  const days = Array.from({ length: 7 }, (_, i) => ({
-    plan_id: plan.id,
-    day_number: i + 1,
-    name: ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"][i],
-    sort_order: i,
-  }));
-
-  const { data: createdDays, error: daysError } = await supabase
+  // Create single container day
+  const { data: day, error: dayError } = await supabase
     .from("meal_plan_days")
-    .insert(days)
-    .select();
+    .insert({ plan_id: plan.id, day_number: 1, name: "Plan", sort_order: 0 })
+    .select()
+    .single();
 
-  if (daysError) throw daysError;
+  if (dayError) throw dayError;
 
-  // Create default meals for each day
-  const mealTypes = ["breakfast", "snack_am", "lunch", "snack_pm", "dinner"];
-  const meals = (createdDays || []).flatMap((day) =>
-    mealTypes.map((type, idx) => ({
-      day_id: day.id,
-      meal_type: type,
-      sort_order: idx,
-    }))
-  );
-
-  await supabase.from("meals").insert(meals);
+  // Create one default meal tab
+  await supabase.from("meals").insert({
+    day_id: day.id,
+    meal_type: "breakfast",
+    name: "Måltid 1",
+    sort_order: 0,
+  });
 
   revalidatePath("/meal-plans");
   return plan;
