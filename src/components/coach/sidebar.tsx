@@ -7,6 +7,7 @@ import { APP_NAME } from "@/lib/constants";
 import {
   LayoutDashboard,
   Users,
+  Target,
   Salad,
   Dumbbell,
   ClipboardCheck,
@@ -25,6 +26,7 @@ import { useRouter } from "next/navigation";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/clients", label: "Klienter", icon: Users },
+  { href: "/leads", label: "Leads", icon: Target },
   { href: "/foods", label: "Näring", icon: Salad },
   { href: "/workouts", label: "Träning", icon: Dumbbell },
   { href: "/content", label: "Innehåll", icon: FolderOpen },
