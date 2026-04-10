@@ -440,9 +440,24 @@ export default function MealPlanEditorPage() {
                 {meals.map((meal: any) => {
                   const items = (meal.meal_items || []).sort((a: any, b: any) => a.sort_order - b.sort_order);
                   let totalCal = 0;
+                  let totalProtein = 0;
+                  let totalCarbs = 0;
+                  let totalFat = 0;
                   items.forEach((item: any) => {
-                    if (item.recipe) totalCal += (item.recipe.total_calories || 0) * (item.servings || 1);
-                    if (item.food) totalCal += (item.food.calories_per_100g || 0) * ((item.amount_g || 100) / 100);
+                    if (item.recipe) {
+                      const s = item.servings || 1;
+                      totalCal += (item.recipe.total_calories || 0) * s;
+                      totalProtein += (item.recipe.total_protein || 0) * s;
+                      totalCarbs += (item.recipe.total_carbs || 0) * s;
+                      totalFat += (item.recipe.total_fat || 0) * s;
+                    }
+                    if (item.food) {
+                      const mult = (item.amount_g || 100) / 100;
+                      totalCal += (item.food.calories_per_100g || 0) * mult;
+                      totalProtein += (item.food.protein_per_100g || 0) * mult;
+                      totalCarbs += (item.food.carbs_per_100g || 0) * mult;
+                      totalFat += (item.food.fat_per_100g || 0) * mult;
+                    }
                   });
 
                   return (
@@ -465,6 +480,13 @@ export default function MealPlanEditorPage() {
                           </button>
                         </div>
                       </div>
+                      {totalCal > 0 && (
+                        <div className="flex gap-4 text-[11px] -mt-0.5 mb-1">
+                          <span className="text-emerald-600 font-medium">Protein: {Math.round(totalProtein)}g / {Math.round(totalProtein * 4 / totalCal * 100)}%</span>
+                          <span className="text-fuchsia-600 font-medium">Kolhydrater: {Math.round(totalCarbs)}g / {Math.round(totalCarbs * 4 / totalCal * 100)}%</span>
+                          <span className="text-teal-600 font-medium">Fett: {Math.round(totalFat)}g / {Math.round(totalFat * 9 / totalCal * 100)}%</span>
+                        </div>
+                      )}
 
                       {items.length > 0 && (
                         <div className="space-y-1.5 mb-2">
