@@ -7,7 +7,7 @@ export async function getMealPlanTemplates() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("meal_plans")
-    .select("id, title, description, target_calories, target_protein_g, target_carbs_g, target_fat_g, is_template, created_at")
+    .select("id, title, description, image_url, target_calories, target_protein_g, target_carbs_g, target_fat_g, is_template, created_at")
     .eq("is_template", true)
     .order("created_at", { ascending: false });
 

@@ -96,9 +96,13 @@ export default async function MealPlansPage({
                   assignClientId ? "border-primary/30 hover:border-primary" : "border-border hover:border-primary/30"
                 }`}>
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
-                      <Salad className="w-5 h-5 text-success" />
-                    </div>
+                    {plan.image_url ? (
+                      <img src={plan.image_url} alt="" className="w-10 h-10 rounded-xl object-cover shrink-0" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center shrink-0">
+                        <Salad className="w-5 h-5 text-success" />
+                      </div>
+                    )}
                     <h3 className="font-semibold text-text-primary truncate">{plan.title}</h3>
                   </div>
                   {plan.target_calories && (
