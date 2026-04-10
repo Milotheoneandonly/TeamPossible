@@ -12,10 +12,6 @@ import Link from "next/link";
 export default function NewMealPlanPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [calories, setCalories] = useState("");
-  const [protein, setProtein] = useState("");
-  const [carbs, setCarbs] = useState("");
-  const [fat, setFat] = useState("");
   const [isTemplate, setIsTemplate] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -31,10 +27,6 @@ export default function NewMealPlanPage() {
         title,
         description: description || undefined,
         is_template: isTemplate,
-        target_calories: calories ? parseInt(calories) : undefined,
-        target_protein_g: protein ? parseInt(protein) : undefined,
-        target_carbs_g: carbs ? parseInt(carbs) : undefined,
-        target_fat_g: fat ? parseInt(fat) : undefined,
       });
       router.push(`/meal-plans/${plan.id}`);
     } catch (err: any) {
@@ -76,41 +68,6 @@ export default function NewMealPlanPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Kort beskrivning av planen..."
                 className="w-full rounded-xl border border-border bg-white px-4 py-3 text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary min-h-[80px] resize-none text-sm"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                id="calories"
-                label="Kalorier (kcal)"
-                type="number"
-                value={calories}
-                onChange={(e) => setCalories(e.target.value)}
-                placeholder="2000"
-              />
-              <Input
-                id="protein"
-                label="Protein (g)"
-                type="number"
-                value={protein}
-                onChange={(e) => setProtein(e.target.value)}
-                placeholder="150"
-              />
-              <Input
-                id="carbs"
-                label="Kolhydrater (g)"
-                type="number"
-                value={carbs}
-                onChange={(e) => setCarbs(e.target.value)}
-                placeholder="200"
-              />
-              <Input
-                id="fat"
-                label="Fett (g)"
-                type="number"
-                value={fat}
-                onChange={(e) => setFat(e.target.value)}
-                placeholder="70"
               />
             </div>
 

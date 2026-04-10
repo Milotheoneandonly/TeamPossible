@@ -6,34 +6,16 @@ import { createWorkoutPlan } from "@/actions/workouts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Loader2, Dumbbell, Plus, X } from "lucide-react";
+import { ArrowLeft, Loader2, Dumbbell } from "lucide-react";
 import Link from "next/link";
 
 export default function NewWorkoutPlanPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [isTemplate, setIsTemplate] = useState(true);
-  const [days, setDays] = useState([
-    { name: "Dag 1: Lower" },
-    { name: "Dag 2: Upper" },
-    { name: "Dag 3: Lower" },
-  ]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-
-  function addDay() {
-    setDays([...days, { name: `Dag ${days.length + 1}` }]);
-  }
-
-  function removeDay(index: number) {
-    if (days.length <= 1) return;
-    setDays(days.filter((_, i) => i !== index));
-  }
-
-  function updateDayName(index: number, name: string) {
-    setDays(days.map((d, i) => (i === index ? { name } : d)));
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,7 +27,7 @@ export default function NewWorkoutPlanPage() {
         title,
         description: description || undefined,
         is_template: isTemplate,
-        days,
+        days: [{ name: "Dag 1" }],
       });
       router.push(`/workouts/${plan.id}`);
     } catch (err: any) {
@@ -88,42 +70,6 @@ export default function NewWorkoutPlanPage() {
                 placeholder="Kort beskrivning av programmet..."
                 className="w-full rounded-xl border border-border bg-white px-4 py-3 text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary min-h-[80px] resize-none text-sm"
               />
-            </div>
-
-            {/* Training days */}
-            <div>
-              <label className="text-sm font-medium text-text-primary block mb-2">
-                Träningsdagar
-              </label>
-              <div className="space-y-2">
-                {days.map((day, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <input
-                      value={day.name}
-                      onChange={(e) => updateDayName(index, e.target.value)}
-                      placeholder={`Dag ${index + 1}`}
-                      className="flex-1 rounded-xl border border-border bg-white px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                    />
-                    {days.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeDay(index)}
-                        className="p-2 text-text-muted hover:text-error transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={addDay}
-                className="mt-2 flex items-center gap-1.5 text-sm text-primary-darker hover:underline"
-              >
-                <Plus className="w-4 h-4" />
-                Lägg till dag
-              </button>
             </div>
 
             <label className="flex items-center gap-3 py-2">
