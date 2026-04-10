@@ -112,6 +112,22 @@ export default async function ClientDetailPage({
     .eq("client_id", clientId)
     .eq("is_read", false);
 
+  // Recent messages (last 3)
+  const { data: recentMessages } = await supabase
+    .from("messages")
+    .select("id, content, sender_id, created_at")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false })
+    .limit(3);
+
+  // Assigned documents
+  const { data: clientDocs } = await supabase
+    .from("client_documents")
+    .select("id, content_file:content_files(id, title, file_type), lesson:lessons(id, title)")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Back */}
@@ -249,20 +265,64 @@ export default async function ClientDetailPage({
 
       {/* Bottom row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-        <div className="bg-white rounded-2xl border border-border p-4 shadow-sm flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-text-muted" />
-            <span className="text-sm text-text-primary">{unreadMessages ? `${unreadMessages} olästa meddelanden` : "0 olästa meddelanden"}</span>
-          </div>
-          <ArrowUpRight className="w-4 h-4 text-text-muted" />
+        {/* Messages card */}
+        <div className="bg-white rounded-2xl border border-border p-4 shadow-sm">
+          <Link href="/messages" className="flex items-center justify-between mb-3 hover:opacity-80 transition-opacity">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-text-muted" />
+              <span className="text-sm font-medium text-text-primary">{unreadMessages ? `${unreadMessages} olästa meddelanden` : "Meddelanden"}</span>
+            </div>
+            <ArrowUpRight className="w-4 h-4 text-text-muted" />
+          </Link>
+          {recentMessages && recentMessages.length > 0 ? (
+            <div className="space-y-2">
+              {recentMessages.map((msg: any) => {
+                const isCoach = msg.sender_id !== client?.profile_id;
+                return (
+                  <div key={msg.id} className="flex gap-2">
+                    <span className={`text-[10px] font-medium shrink-0 mt-0.5 ${isCoach ? "text-primary-darker" : "text-text-muted"}`}>
+                      {isCoach ? "Du" : profile?.first_name}
+                    </span>
+                    <p className="text-xs text-text-secondary truncate flex-1">{msg.content}</p>
+                    <span className="text-[10px] text-text-muted shrink-0">
+                      {new Date(msg.created_at).toLocaleDateString("sv-SE", { day: "numeric", month: "short" })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-text-muted">Inga meddelanden än</p>
+          )}
         </div>
-        <Link href={`/clients/${clientId}/dokument`} className="bg-white rounded-2xl border border-border p-4 shadow-sm flex items-center justify-between hover:border-primary/30 transition-colors">
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-text-muted" />
-            <span className="text-sm text-text-primary">Dokument</span>
-          </div>
-          <ArrowUpRight className="w-4 h-4 text-text-muted" />
-        </Link>
+
+        {/* Documents card */}
+        <div className="bg-white rounded-2xl border border-border p-4 shadow-sm">
+          <Link href={`/clients/${clientId}/dokument`} className="flex items-center justify-between mb-3 hover:opacity-80 transition-opacity">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-text-muted" />
+              <span className="text-sm font-medium text-text-primary">Dokument</span>
+            </div>
+            <ArrowUpRight className="w-4 h-4 text-text-muted" />
+          </Link>
+          {clientDocs && clientDocs.length > 0 ? (
+            <div className="space-y-1.5">
+              {clientDocs.map((doc: any) => {
+                const title = doc.content_file?.title || doc.lesson?.title || "Okänt";
+                const type = doc.content_file ? doc.content_file.file_type : "Lektion";
+                return (
+                  <div key={doc.id} className="flex items-center gap-2">
+                    <FileText className="w-3 h-3 text-text-muted shrink-0" />
+                    <p className="text-xs text-text-secondary truncate flex-1">{title}</p>
+                    <span className="text-[10px] text-text-muted shrink-0 uppercase">{type}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-text-muted">Inga dokument tilldelade</p>
+          )}
+        </div>
       </div>
 
       {/* Danger zone */}
