@@ -44,6 +44,7 @@ export async function inviteClient(formData: {
   phone?: string;
   goals?: string;
   notes?: string;
+  check_in_day?: number; // 0=Mon..6=Sun, undefined=no reminder
 }) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
@@ -88,6 +89,7 @@ export async function inviteClient(formData: {
     coach_id: user.id,
     goals: formData.goals || null,
     notes: formData.notes || null,
+    check_in_day: formData.check_in_day ?? null,
   });
 
   if (clientError) throw clientError;

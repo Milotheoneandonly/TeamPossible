@@ -10,6 +10,10 @@ import { ArrowLeft, UserPlus, Loader2, CheckCircle, Copy, Check } from "lucide-r
 import Link from "next/link";
 
 const DAYS = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"];
+const DAY_TO_INT: Record<string, number> = {
+  "Måndag": 0, "Tisdag": 1, "Onsdag": 2, "Torsdag": 3,
+  "Fredag": 4, "Lördag": 5, "Söndag": 6,
+};
 
 export default function InviteClientPage() {
   // Step 1: Client info
@@ -47,7 +51,8 @@ export default function InviteClientPage() {
         lastName,
         phone: phone || undefined,
         goals: goals || undefined,
-        notes: notes ? `${notes}\n\nCheck-in: Varje ${checkInFrequency} ${checkInPeriod === "weekly" ? "vecka" : checkInPeriod === "biweekly" ? "varannan vecka" : "månad"} på ${checkInDay}\nStartdatum: ${startDate}` : `Check-in: Varje ${checkInFrequency} ${checkInPeriod === "weekly" ? "vecka" : "månad"} på ${checkInDay}\nStartdatum: ${startDate}`,
+        notes: notes || undefined,
+        check_in_day: DAY_TO_INT[checkInDay],
       });
       setResult(res);
     } catch (err: any) {
