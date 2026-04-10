@@ -30,7 +30,7 @@ export default async function NutritionPage({
   const recipes = activeTab === "recept" ? await getRecipes() : [];
 
   const { data: foods, count: foodCount } = activeTab === "livsmedel"
-    ? await supabase.from("foods").select("*", { count: "exact" }).order("name_sv").limit(200)
+    ? await supabase.from("foods").select("*", { count: "exact" }).order("name_sv").limit(500)
     : { data: [], count: 0 };
 
   // Get assigned plans for mallar tab

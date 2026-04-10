@@ -198,6 +198,171 @@ A fitness coaching platform built for one coach (Alice) and her 30 Swedish/Nordi
 - Content files (PDFs, documents) stored in `content-files` bucket
 - Lessons support draft/published status for controlled visibility
 
+## Recent Session Fix (2026-04-10)
+- **Fixed meal plan cover images bug**: `getMealPlanTemplates()` was missing `image_url` in SELECT query. Fixed in 3 files: `src/actions/meal-plans.ts`, `src/app/(coach)/foods/page.tsx`, `src/app/(coach)/meal-plans/page.tsx`. Template cards now show uploaded cover images. Committed and deployed to Vercel.
+
+## ACTIVE TASK: Recipe Migration from Zenfit 2.0
+
+### Status: ALL 76 RECIPES EXTRACTED — READY TO BUILD SQL
+
+### What Was Done
+- Manually extracted all 76 recipes from wife's Zenfit 2.0 account via screenshots (76 recipe detail popups screenshotted and data extracted)
+- All recipe data saved to: `C:\Users\danth\Desktop\Possible ZENFIT\zenfit-recipes-extracted.json`
+- Each recipe includes: name, protein/carbs/fat percentages, total weight, total kcal, ingredients (name + amount_g + kcal each), instructions, prep/cook time, meal type tags, recipe type tags
+
+### Duplicate Recipes to REMOVE (identical ingredients + amounts)
+- Entry #25 (duplicate of #24 "Keso med bär - ANNY")
+- Entry #38 (duplicate of #36 "Lax och Potatis")
+- Entry #39 (duplicate of #36 "Lax och Potatis")
+- Entry #43 (duplicate of #41 "LOUISE - GLASS")
+- **Final unique recipe count: 71 recipes**
+
+### All 76 Unique Ingredients Found
+1. Smör, saltat
+2. Levain, surdegsbröd (Pågen)
+3. Gurka
+4. Äggvita, pastöriserad
+5. Ägg, hela
+6. Majskakor
+7. SSN isolat (SSN)
+8. Alpro mandelmjölk osötad
+9. Kalkonpålägg
+10. Äpple
+11. Kvarg, naturell, 0.2% fett
+12. Supermini Keso, 0.2% fett
+13. Svartvinbärsgelé
+14. ATRON Isolate Proteinpulver
+15. Jordnötssmör, minst 99%
+16. Whey Berry - Cypern
+17. Granola, Kakao & Hallon
+18. Annie Yoghurt
+19. keso/ havregryn bröd
+20. Tomat
+21. Majs, konserverad
+22. Kycklingbröstfilé, rå
+23. Morötter
+24. Isbergssallad
+25. Olivolja
+26. Zucchini/Squash
+27. Sötmandel
+28. Kaseinpulver, vaniljsmak
+29. Hallon, frysta
+30. Kolhydrater (IGNITE ATRON)
+31. FINAL - ATRON
+32. Färskost, Philadelphia Original
+33. Kallrökt lax
+34. Rågkusar 6P (Fazer)
+35. Havredryck, iKaffe (Oatly)
+36. Choklad, 70%
+37. Granola, Hasselnötter &...
+38. Cottage Cheese 2,0%
+39. Blåbär, frysta
+40. Linfrön
+41. Hallon
+42. Keso, 4%
+43. Banan
+44. Avokado, färsk
+45. Gröna bönor/Haricots verts
+46. Potatis
+47. Vitt ris, alla sorter, okokt
+48. Virgin Kokosolja Kallpressad
+49. Ananas
+50. Laxfilé (Pacific brand)
+51. Bladspenat
+52. Grapefrukt
+53. Kakaopulver
+54. Honung
+55. Havregryn
+56. Röd paprika
+57. Nötfärs, Finmalen, Fetthalt 12%
+58. Grekisk yoghurt, 0% fett
+59. Citron
+60. Mandeldryck, naturell, osötad
+61. Lättmjölk, 0.5% fett, laktosfri
+62. Nötfärs, 3-7% fett, rå
+63. Mellanmjölk, 1.5% fett, laktosfri
+64. Blåbär
+65. Mandelsmör, 100% mandlar
+66. Havregryn, Gyllenhammar
+67. MCT olja
+68. Kimchi
+69. Mellanmjölk, 1.5% fett
+70. Kycklingbröstfilé, grillad/stekt
+71. Mager ost, 11% fett, valfri
+72. Majonnäs (Hellmann's)
+73. Riskaka
+74. Tonfisk, i vatten, konserverad
+75. Sej/Alaska pollock, utan skinn
+76. Maxi Pack (yogur)
+
+### What Needs To Be Done NEXT
+1. **Cross-reference** all 76 ingredients against existing `foods` table in Supabase (200+ foods already seeded). Many common ones (Ägg, Gurka, Tomat, Potatis, Kyckling, Olivolja, Banan, etc.) likely already exist
+2. **Calculate per-100g macros** for each missing ingredient using the kcal data from the recipes (kcal / amount_g * 100)
+3. **Build ONE SQL migration script** (migration #00014) that:
+   - INSERTs all missing ingredients into `foods` table
+   - INSERTs all 71 unique recipes into `recipes` table (needs coach_id — query it from profiles where role='coach')
+   - INSERTs all recipe_ingredients linking each recipe to its foods with correct amount_g and sort_order
+4. **Open the SQL in Notepad** for the user to copy/paste into Supabase SQL Editor
+5. **User uploads recipe images manually later** (images not transferred, only data)
+6. **Deploy** — recipes will appear on the site immediately after SQL runs
+
+### Key Data File
+- **Full recipe data JSON**: `C:\Users\danth\Desktop\Possible ZENFIT\zenfit-recipes-extracted.json`
+- Contains all 75 entries (76 raw minus 1 merged during extraction), 4 more to remove as duplicates = 71 final unique recipes
+- Each entry has: number, name, macros, total_weight_g, total_kcal, instructions, prep/cook time, tags, type, ingredients array
+
+### Database Schema for Recipes (for reference)
+```sql
+-- recipes table
+CREATE TABLE recipes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  coach_id UUID REFERENCES profiles(id),
+  name TEXT NOT NULL,
+  name_sv TEXT,
+  total_calories NUMERIC,
+  total_protein NUMERIC,
+  total_carbs NUMERIC,
+  total_fat NUMERIC,
+  tags TEXT[],
+  instructions TEXT,
+  prep_time_minutes INTEGER,
+  cook_time_minutes INTEGER,
+  servings INTEGER DEFAULT 1,
+  image_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- recipe_ingredients table
+CREATE TABLE recipe_ingredients (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  recipe_id UUID REFERENCES recipes(id) ON DELETE CASCADE,
+  food_id UUID REFERENCES foods(id),
+  amount_g NUMERIC NOT NULL,
+  sort_order INTEGER DEFAULT 0
+);
+
+-- foods table
+CREATE TABLE foods (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  name_sv TEXT,
+  calories_per_100g NUMERIC,
+  protein_per_100g NUMERIC,
+  carbs_per_100g NUMERIC,
+  fat_per_100g NUMERIC,
+  category TEXT
+);
+```
+
+### Tag Mapping (Zenfit → Our system)
+Zenfit meal type tags map to our recipe tags array:
+- Frukost → breakfast
+- Lunch → lunch  
+- Middag → dinner
+- Mellanmål → snack
+Zenfit "Typ" tags (Bodybuilding, Enkla måltider, Sallad, Fingermat, etc.) can be stored as additional tags.
+
 ## What's NOT Built Yet
 - Leads management system (Alla, Ny, Kontaktad, Pausad, Vunnen, Forlorad)
 - Multi-coach support
