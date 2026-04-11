@@ -16,13 +16,13 @@ export default function ClientDocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [showPicker, setShowPicker] = useState(false);
   const [clientName, setClientName] = useState("");
+  const [viewingLesson, setViewingLesson] = useState<any>(null);
 
   const supabase = createClient();
 
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
-    // Get client name
     const { data: client } = await supabase
       .from("clients")
       .select("profile:profiles!clients_profile_id_fkey(first_name, last_name)")
@@ -30,15 +30,13 @@ export default function ClientDocumentsPage() {
       .single();
     if (client?.profile) setClientName(`${(client.profile as any).first_name} ${(client.profile as any).last_name}`);
 
-    // Get assigned documents
     const { data: docs } = await supabase
       .from("client_documents")
-      .select("id, created_at, content_file:content_files(id, title, file_url, file_type), lesson:lessons(id, title, media_url, media_type)")
+      .select("id, created_at, content_file:content_files(id, title, file_url, file_type, description), lesson:lessons(id, title, subtitle, message, media_url, media_type, status)")
       .eq("client_id", clientId)
       .order("created_at", { ascending: false });
     setAssignedDocs(docs || []);
 
-    // Get all files and lessons for picker
     const { data: files } = await supabase.from("content_files").select("id, title, file_type").order("title");
     const { data: lessons } = await supabase.from("lessons").select("id, title, status").eq("status", "published").order("title");
     setAllFiles(files || []);
@@ -132,7 +130,7 @@ export default function ClientDocumentsPage() {
           )}
 
           {allFiles.length === 0 && allLessons.length === 0 && (
-            <p className="text-sm text-text-muted">Inga filer eller lektioner att lägga till. Gå till Innehåll för att skapa.</p>
+            <p className="text-sm text-text-muted">Inga filer eller lektioner att lägga till.</p>
           )}
         </div>
       )}
@@ -143,7 +141,7 @@ export default function ClientDocumentsPage() {
           <FileText className="w-10 h-10 text-text-muted mx-auto mb-3" />
           <p className="text-text-muted">Inga dokument delade med {clientName}</p>
           <button onClick={() => setShowPicker(true)} className="text-sm text-primary-darker hover:underline mt-2 inline-block">
-            Lägg till från biblioteket →
+            Lägg till från biblioteket
           </button>
         </div>
       ) : (
@@ -159,10 +157,19 @@ export default function ClientDocumentsPage() {
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${isFile ? "bg-accent/10" : "bg-primary-lighter"}`}>
                   {isFile ? <FileText className="w-5 h-5 text-accent" /> : <Video className="w-5 h-5 text-primary-darker" />}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-text-primary truncate">{title}</p>
+                <button
+                  onClick={() => {
+                    if (isFile && url) {
+                      window.open(url, "_blank");
+                    } else if (!isFile && doc.lesson) {
+                      setViewingLesson(doc.lesson);
+                    }
+                  }}
+                  className="flex-1 min-w-0 text-left hover:opacity-70 transition-opacity"
+                >
+                  <p className="text-sm font-medium text-primary-darker underline underline-offset-2 truncate">{title}</p>
                   <p className="text-xs text-text-muted">{type}</p>
-                </div>
+                </button>
                 {url && (
                   <a href={url} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-primary-darker p-1">
                     <ExternalLink className="w-4 h-4" />
@@ -174,6 +181,48 @@ export default function ClientDocumentsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Lesson viewer modal */}
+      {viewingLesson && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setViewingLesson(null)} />
+          <div className="relative bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-y-auto z-50">
+            <div className="sticky top-0 bg-white border-b border-border-light px-6 py-4 flex items-center justify-between rounded-t-2xl">
+              <div>
+                <h2 className="text-lg font-bold text-text-primary">{viewingLesson.title}</h2>
+                {viewingLesson.subtitle && <p className="text-sm text-text-muted">{viewingLesson.subtitle}</p>}
+              </div>
+              <button onClick={() => setViewingLesson(null)} className="text-text-muted hover:text-text-primary p-1">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              {viewingLesson.media_url && (
+                <div>
+                  {viewingLesson.media_type === "video" ? (
+                    <video src={viewingLesson.media_url} controls className="w-full rounded-xl" />
+                  ) : viewingLesson.media_type === "image" ? (
+                    <img src={viewingLesson.media_url} alt="" className="w-full rounded-xl object-cover" />
+                  ) : (
+                    <a href={viewingLesson.media_url} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-sm text-primary-darker hover:underline">
+                      <FileText className="w-4 h-4" /> Ladda ner bifogad fil
+                    </a>
+                  )}
+                </div>
+              )}
+              {viewingLesson.message && (
+                <div className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
+                  {viewingLesson.message}
+                </div>
+              )}
+              {!viewingLesson.message && !viewingLesson.media_url && (
+                <p className="text-sm text-text-muted italic">Ingen beskrivning tillagd.</p>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -108,7 +108,7 @@ export default async function ClientDetailPage({
   // Assigned documents
   const { data: clientDocs } = await supabase
     .from("client_documents")
-    .select("id, content_file:content_files(id, title, file_type), lesson:lessons(id, title)")
+    .select("id, content_file:content_files(id, title, file_type, file_url), lesson:lessons(id, title)")
     .eq("client_id", clientId)
     .order("created_at", { ascending: false })
     .limit(5);
@@ -303,12 +303,19 @@ export default async function ClientDetailPage({
               {clientDocs.map((doc: any) => {
                 const title = doc.content_file?.title || doc.lesson?.title || "Okänt";
                 const type = doc.content_file ? doc.content_file.file_type : "Lektion";
-                return (
-                  <div key={doc.id} className="flex items-center gap-2">
-                    <FileText className="w-3 h-3 text-text-muted shrink-0" />
-                    <p className="text-xs text-text-secondary truncate flex-1">{title}</p>
+                const fileUrl = doc.content_file?.file_url;
+                return fileUrl ? (
+                  <a key={doc.id} href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:opacity-70 transition-opacity">
+                    <FileText className="w-3 h-3 text-accent shrink-0" />
+                    <p className="text-xs text-primary-darker truncate flex-1 underline underline-offset-2">{title}</p>
                     <span className="text-[10px] text-text-muted shrink-0 uppercase">{type}</span>
-                  </div>
+                  </a>
+                ) : (
+                  <Link key={doc.id} href={`/clients/${clientId}/dokument`} className="flex items-center gap-2 hover:opacity-70 transition-opacity">
+                    <FileText className="w-3 h-3 text-primary-darker shrink-0" />
+                    <p className="text-xs text-primary-darker truncate flex-1 underline underline-offset-2">{title}</p>
+                    <span className="text-[10px] text-text-muted shrink-0 uppercase">{type}</span>
+                  </Link>
                 );
               })}
             </div>
