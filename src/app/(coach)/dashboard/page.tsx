@@ -82,16 +82,21 @@ export default async function CoachDashboard() {
     .eq("status", "kontaktad");
 
   const { greeting, emoji } = getGreeting();
+  const quote = "It\u2019s not about perfect. It\u2019s about effort. And when you bring that effort every single day, that\u2019s when transformation happens.";
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Greeting */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-text-primary tracking-tight">
-          {greeting}, <span className="text-gradient">{profile?.first_name || "Coach"}</span> {emoji}
-        </h1>
-        <p className="text-text-secondary mt-1 font-medium">En överblick</p>
+    <div>
+      {/* Baby blue accent banner */}
+      <div className="accent-banner px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
+        <div className="max-w-7xl mx-auto relative z-10">
+          <h1 className="text-3xl font-bold text-white tracking-tight drop-shadow-sm">
+            {greeting}, <span className="font-extrabold">{profile?.first_name || "Coach"}</span> {emoji}
+          </h1>
+          <p className="text-white/80 mt-1 font-medium text-sm">En överblick</p>
+        </div>
       </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 -mt-4 relative z-10">
 
       {/* Top stat cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -335,13 +340,25 @@ export default async function CoachDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Motivational quote */}
+      <div className="flex items-center justify-end pt-6">
+        <div className="text-right max-w-xs">
+          <p className="text-[11px] text-text-muted/60 italic leading-relaxed">
+            {quote}
+          </p>
+          <p className="text-[10px] text-primary-darker/40 font-semibold mt-1 tracking-wide uppercase">Possible</p>
+        </div>
+      </div>
+
+      </div>
     </div>
   );
 }
 
-function getGreeting(): { greeting: string; emoji: string } {
+function getGreeting() {
   const hour = new Date().getUTCHours();
-  if (hour < 10) return { greeting: "God morgon", emoji: "\u2600\uFE0F" };
-  if (hour < 17) return { greeting: "God dag", emoji: "\uD83C\uDF24\uFE0F" };
-  return { greeting: "God kv\u00e4ll", emoji: "\uD83C\uDF19" };
+  if (hour < 10) return { greeting: "God morgon", emoji: "\u2600\ufe0f" };
+  if (hour < 17) return { greeting: "God dag", emoji: "\ud83c\udf24\ufe0f" };
+  return { greeting: "God kv\u00e4ll", emoji: "\ud83c\udf19" };
 }
