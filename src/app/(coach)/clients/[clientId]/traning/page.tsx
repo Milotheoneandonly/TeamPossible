@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Dumbbell, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DeleteWorkoutPlanButton } from "@/components/coach/delete-button";
+import { PlanStatusToggle } from "@/components/coach/plan-status-toggle";
 
 export default async function ClientTraningPage({
   params,
@@ -86,11 +87,7 @@ export default async function ClientTraningPage({
                   <p className="font-medium text-text-primary">{plan.title}</p>
                 </Link>
                 <p className="text-sm text-text-muted truncate">{plan.description || "—"}</p>
-                {plan.is_active ? (
-                  <span className="text-xs font-medium bg-success/10 text-success px-2.5 py-1 rounded-full w-fit">Publicerad</span>
-                ) : (
-                  <span className="text-xs text-text-muted">Inaktiv</span>
-                )}
+                <PlanStatusToggle planId={plan.id} isActive={plan.is_active} table="workout_plans" />
                 <p className="text-sm font-medium text-text-primary text-right">{plan.workout_days?.length || 0}</p>
                 <DeleteWorkoutPlanButton planId={plan.id} planTitle={plan.title} />
               </div>
