@@ -85,18 +85,14 @@ export default async function CoachDashboard() {
   const quote = "It\u2019s not about perfect. It\u2019s about effort. And when you bring that effort every single day, that\u2019s when transformation happens.";
 
   return (
-    <div>
-      {/* Baby blue accent banner */}
-      <div className="accent-banner px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
-        <div className="max-w-7xl mx-auto relative z-10">
-          <h1 className="text-3xl font-bold text-white tracking-tight drop-shadow-sm">
-            {greeting}, <span className="font-extrabold">{profile?.first_name || "Coach"}</span> {emoji}
-          </h1>
-          <p className="text-white/80 mt-1 font-medium text-sm">En överblick</p>
-        </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Greeting */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-text-primary tracking-tight">
+          {greeting}, <span className="text-gradient">{profile?.first_name || "Coach"}</span> {emoji}
+        </h1>
+        <p className="text-text-secondary mt-1 font-medium">En överblick</p>
       </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 -mt-4 relative z-10">
 
       {/* Top stat cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -341,17 +337,14 @@ export default async function CoachDashboard() {
         </div>
       </div>
 
-      {/* Motivational quote */}
-      <div className="flex items-center justify-end pt-6">
-        <div className="text-right max-w-xs">
-          <p className="text-[11px] text-text-muted/60 italic leading-relaxed">
-            {quote}
-          </p>
-          <p className="text-[10px] text-primary-darker/40 font-semibold mt-1 tracking-wide uppercase">Possible</p>
-        </div>
+      {/* Motivational quote — fixed bottom right */}
+      <div className="fixed bottom-6 right-8 text-right max-w-sm z-10 hidden lg:block">
+        <p className="text-sm text-text-primary/70 italic leading-relaxed font-medium">
+          {quote}
+        </p>
+        <p className="text-xs text-text-primary/40 font-bold mt-1.5 tracking-widest uppercase">Possible</p>
       </div>
 
-      </div>
     </div>
   );
 }
