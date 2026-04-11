@@ -87,8 +87,8 @@ export default async function CoachDashboard() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Greeting */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-text-primary">
-          {greeting}, <span className="text-primary-darker">{profile?.first_name || "Coach"}</span> {emoji}
+        <h1 className="text-3xl font-bold text-text-primary tracking-tight">
+          {greeting}, <span className="text-gradient">{profile?.first_name || "Coach"}</span> {emoji}
         </h1>
         <p className="text-text-secondary mt-1 font-medium">En överblick</p>
       </div>
@@ -97,22 +97,24 @@ export default async function CoachDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         {/* Leads card */}
         <Link href="/leads">
-          <div className={`bg-white rounded-2xl border p-5 shadow-sm hover:shadow-md transition-all ${
-            (newLeadsCount || 0) > 0 ? "border-primary/30 hover:border-primary" : "border-border hover:border-primary/30"
+          <div className={`card-elevated rounded-2xl p-5 ${
+            (newLeadsCount || 0) > 0 ? "!border-primary/20" : ""
           }`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-text-muted">Nya leads</p>
+                <p className="text-xs font-semibold text-text-muted uppercase tracking-wide">Nya leads</p>
                 {(newLeadsCount || 0) > 0 ? (
-                  <p className="text-2xl font-bold text-text-primary mt-1">
+                  <p className="text-2xl font-bold text-text-primary mt-1.5">
                     {newLeadsCount} <span className="text-sm font-normal text-text-muted">att kontakta</span>
                   </p>
                 ) : (
-                  <p className="text-lg font-semibold text-text-primary mt-1">Alla uppdaterade</p>
+                  <p className="text-lg font-semibold text-text-primary mt-1.5">Alla uppdaterade</p>
                 )}
               </div>
               <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${
-                (newLeadsCount || 0) > 0 ? "bg-primary-lighter" : "bg-surface"
+                (newLeadsCount || 0) > 0
+                  ? "bg-gradient-to-br from-primary-lighter to-primary-light/40"
+                  : "bg-surface"
               }`}>
                 <Target className={`w-5 h-5 ${(newLeadsCount || 0) > 0 ? "text-primary-darker" : "text-text-muted"}`} />
               </div>
@@ -122,22 +124,24 @@ export default async function CoachDashboard() {
 
         {/* Check-ins card */}
         <Link href="/check-ins">
-          <div className={`bg-white rounded-2xl border p-5 shadow-sm hover:shadow-md transition-all ${
-            stats.pendingCheckIns > 0 ? "border-warning/30 hover:border-warning" : "border-border hover:border-primary/30"
+          <div className={`card-elevated rounded-2xl p-5 ${
+            stats.pendingCheckIns > 0 ? "!border-warning/20" : ""
           }`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-text-muted">Väntande check-ins</p>
+                <p className="text-xs font-semibold text-text-muted uppercase tracking-wide">Väntande check-ins</p>
                 {stats.pendingCheckIns > 0 ? (
-                  <p className="text-2xl font-bold text-text-primary mt-1">
+                  <p className="text-2xl font-bold text-text-primary mt-1.5">
                     {stats.pendingCheckIns} <span className="text-sm font-normal text-text-muted">att granska</span>
                   </p>
                 ) : (
-                  <p className="text-lg font-semibold text-text-primary mt-1">Inga</p>
+                  <p className="text-lg font-semibold text-text-primary mt-1.5">Inga</p>
                 )}
               </div>
               <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${
-                stats.pendingCheckIns > 0 ? "bg-warning/10" : "bg-surface"
+                stats.pendingCheckIns > 0
+                  ? "bg-gradient-to-br from-amber-50 to-orange-50"
+                  : "bg-surface"
               }`}>
                 <ClipboardCheck className={`w-5 h-5 ${stats.pendingCheckIns > 0 ? "text-warning" : "text-text-muted"}`} />
               </div>
@@ -145,24 +149,28 @@ export default async function CoachDashboard() {
           </div>
         </Link>
 
-        {/* Messages card */}
+        {/* Messages card — highlighted when unread (like Zenfit) */}
         <Link href="/messages">
-          <div className={`bg-white rounded-2xl border p-5 shadow-sm hover:shadow-md transition-all ${
-            stats.unreadMessages > 0 ? "border-accent/30 hover:border-accent" : "border-border hover:border-primary/30"
+          <div className={`rounded-2xl p-5 transition-all duration-200 ${
+            stats.unreadMessages > 0
+              ? "bg-gradient-to-br from-accent/10 via-accent/5 to-white border border-accent/20 shadow-sm shadow-accent/5 hover:shadow-md hover:shadow-accent/10 hover:-translate-y-0.5"
+              : "card-elevated"
           }`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-text-muted">Meddelanden</p>
+                <p className={`text-xs font-semibold uppercase tracking-wide ${stats.unreadMessages > 0 ? "text-accent" : "text-text-muted"}`}>Meddelanden</p>
                 {stats.unreadMessages > 0 ? (
-                  <p className="text-2xl font-bold text-text-primary mt-1">
-                    {stats.unreadMessages} <span className="text-sm font-normal text-text-muted">olästa</span>
+                  <p className="text-2xl font-bold text-text-primary mt-1.5">
+                    Du har {stats.unreadMessages} olästa
                   </p>
                 ) : (
-                  <p className="text-lg font-semibold text-text-primary mt-1">Inga olästa</p>
+                  <p className="text-lg font-semibold text-text-primary mt-1.5">Inga olästa</p>
                 )}
               </div>
               <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${
-                stats.unreadMessages > 0 ? "bg-accent/10" : "bg-surface"
+                stats.unreadMessages > 0
+                  ? "bg-accent/10"
+                  : "bg-surface"
               }`}>
                 <MessageSquare className={`w-5 h-5 ${stats.unreadMessages > 0 ? "text-accent" : "text-text-muted"}`} />
               </div>
@@ -172,33 +180,36 @@ export default async function CoachDashboard() {
       </div>
 
       {/* Overview stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-2xl border border-border p-5 shadow-sm text-center">
-          <p className="text-3xl font-bold text-text-primary">{newLeadsCount || 0}</p>
-          <p className="text-sm text-text-muted mt-1">Nya leads</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-border p-5 shadow-sm text-center">
-          <p className="text-3xl font-bold text-text-primary">{contactedLeadsCount || 0}</p>
-          <p className="text-sm text-text-muted mt-1">Kontaktade</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-border p-5 shadow-sm text-center">
-          <p className="text-3xl font-bold text-text-primary">{stats.activeClients}</p>
-          <p className="text-sm text-text-muted mt-1">Aktiva klienter</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-border p-5 shadow-sm text-center">
-          <p className="text-3xl font-bold text-text-primary">{stats.pendingCheckIns}</p>
-          <p className="text-sm text-text-muted mt-1">Att granska</p>
+      <div className="mb-8">
+        <p className="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3 px-1">Din verksamhet i en överblick</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="card-elevated rounded-2xl p-5 text-center">
+            <p className="text-3xl font-bold text-text-primary">{newLeadsCount || 0}</p>
+            <p className="text-xs text-text-muted mt-1 font-medium">Nya leads</p>
+          </div>
+          <div className="card-elevated rounded-2xl p-5 text-center">
+            <p className="text-3xl font-bold text-text-primary">{contactedLeadsCount || 0}</p>
+            <p className="text-xs text-text-muted mt-1 font-medium">Kontaktade</p>
+          </div>
+          <div className="card-elevated rounded-2xl p-5 text-center">
+            <p className="text-3xl font-bold text-primary-darker">{stats.activeClients}</p>
+            <p className="text-xs text-text-muted mt-1 font-medium">Aktiva klienter</p>
+          </div>
+          <div className="card-elevated rounded-2xl p-5 text-center">
+            <p className="text-3xl font-bold text-text-primary">{stats.pendingCheckIns}</p>
+            <p className="text-xs text-text-muted mt-1 font-medium">Att granska</p>
+          </div>
         </div>
       </div>
 
       {/* Main content - 3 columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Check-ins att granska */}
-        <div className="bg-white rounded-2xl border border-border shadow-sm">
-          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+        <div className="card-elevated rounded-2xl">
+          <div className="px-5 py-4 border-b border-border-light flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-warning" />
-              <h2 className="font-semibold text-text-primary">Att granska</h2>
+              <div className="w-2 h-2 rounded-full bg-warning animate-pulse" />
+              <h2 className="font-semibold text-text-primary text-sm">Att granska</h2>
             </div>
             <Link href="/check-ins" className="text-xs text-primary-darker hover:underline">
               Visa alla →
@@ -242,9 +253,9 @@ export default async function CoachDashboard() {
         </div>
 
         {/* Dina klienter */}
-        <div className="bg-white rounded-2xl border border-border shadow-sm">
-          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-            <h2 className="font-semibold text-text-primary">Dina klienter</h2>
+        <div className="card-elevated rounded-2xl">
+          <div className="px-5 py-4 border-b border-border-light flex items-center justify-between">
+            <h2 className="font-semibold text-text-primary text-sm">Dina klienter</h2>
             <Link href="/clients/invite" className="text-xs text-primary-darker hover:underline flex items-center gap-1">
               <Plus className="w-3 h-3" /> Ny klient
             </Link>
@@ -280,11 +291,11 @@ export default async function CoachDashboard() {
         </div>
 
         {/* Leads */}
-        <div className="bg-white rounded-2xl border border-border shadow-sm">
-          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+        <div className="card-elevated rounded-2xl">
+          <div className="px-5 py-4 border-b border-border-light flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-primary-darker" />
-              <h2 className="font-semibold text-text-primary">Leads</h2>
+              <div className="w-2 h-2 rounded-full bg-primary-darker" />
+              <h2 className="font-semibold text-text-primary text-sm">Leads</h2>
               {(totalLeadsCount || 0) > 0 && (
                 <span className="text-[10px] text-text-muted bg-surface px-1.5 py-0.5 rounded-full">{totalLeadsCount}</span>
               )}

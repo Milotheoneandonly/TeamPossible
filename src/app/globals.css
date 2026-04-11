@@ -7,11 +7,11 @@
   --primary-dark: #5BA4D9;
   --primary-darker: #3B82C4;
   --primary-light: #B8E2FF;
-  --primary-lighter: #E0F2FE;
-  --accent: #2563EB;
-  --accent-light: #60A5FA;
-  --surface: #F8FAFC;
-  --surface-hover: #F1F5F9;
+  --primary-lighter: #E8F4FD;
+  --accent: #6366F1;
+  --accent-light: #818CF8;
+  --surface: #F6F8FB;
+  --surface-hover: #EEF2F7;
   --border: #E2E8F0;
   --border-light: #F1F5F9;
   --text-primary: #0F172A;
@@ -20,6 +20,7 @@
   --success: #10B981;
   --warning: #F59E0B;
   --error: #EF4444;
+  --sidebar-bg: #FAFCFF;
 }
 
 @theme inline {
@@ -42,6 +43,7 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-error: var(--error);
+  --color-sidebar-bg: var(--sidebar-bg);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -52,9 +54,35 @@ body {
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
 }
 
-/* Smooth scrolling */
 html {
   scroll-behavior: smooth;
+}
+
+/* Premium card styles */
+.card-elevated {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.04),
+    0 4px 12px rgba(15, 23, 42, 0.03);
+  transition: all 0.2s ease;
+}
+
+.card-elevated:hover {
+  box-shadow:
+    0 2px 6px rgba(15, 23, 42, 0.06),
+    0 8px 24px rgba(15, 23, 42, 0.06);
+  border-color: rgba(137, 207, 240, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Gradient text utility */
+.text-gradient {
+  background: linear-gradient(135deg, var(--primary-darker), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* iOS safe area for bottom navigation */

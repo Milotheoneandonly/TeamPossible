@@ -68,6 +68,7 @@ export default function SettingsPage() {
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+    window.dispatchEvent(new Event("profile-updated"));
     router.refresh();
   }
 
@@ -83,6 +84,7 @@ export default function SettingsPage() {
       const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(filePath);
       await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", profile.id);
       setAvatarUrl(publicUrl);
+      window.dispatchEvent(new Event("profile-updated"));
       router.refresh();
     }
   }
