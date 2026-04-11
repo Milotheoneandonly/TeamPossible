@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft, Salad, Loader2, UserPlus, CheckCircle,
-  Plus, Search, X, GripVertical, MoreHorizontal, Camera,
+  Plus, Search, X, GripVertical, MoreHorizontal, Camera, Trash2,
 } from "lucide-react";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -53,18 +53,18 @@ function DraggableSidebarRecipe({ recipe, onClick }: { recipe: any; onClick: () 
         <p className="text-sm font-medium text-text-primary truncate">{recipe.name_sv || recipe.name}</p>
         <p className="text-[10px] text-text-muted truncate">
           {recipe.total_calories ? `${Math.round(recipe.total_calories)} kcal` : ""}
-          {recipe.tags?.length ? ` · ${recipe.tags.slice(0, 2).join(", ")}` : ""}
+          {recipe.tags?.length ? ` \u00b7 ${recipe.tags.slice(0, 2).join(", ")}` : ""}
         </p>
       </div>
     </div>
   );
 }
 
-// ─── Sortable meal item row ─────────────────────────────────
-function SortableMealItemRow({ item, onRemove, onUpdate }: {
+// ─── Sortable meal item row (grams only) ────────────────────
+function SortableMealItemRow({ item, onRemove, onGramsChange }: {
   item: any;
   onRemove: (id: string) => void;
-  onUpdate: (id: string, field: string, value: any) => void;
+  onGramsChange: (id: string, grams: number) => void;
 }) {
   const recipe = item.recipe;
   const food = item.food;
@@ -77,70 +77,50 @@ function SortableMealItemRow({ item, onRemove, onUpdate }: {
     zIndex: isDragging ? 50 : undefined,
   };
 
-  const displayName = recipe ? (recipe.name_sv || recipe.name) : food ? (food.name_sv || food.name) : "Okänt";
+  const displayName = recipe ? (recipe.name_sv || recipe.name) : food ? (food.name_sv || food.name) : "Ok\u00e4nt";
   const imageUrl = recipe?.image_url || null;
 
   return (
     <div ref={setNodeRef} style={style} className="bg-white rounded-xl border border-border shadow-sm flex items-center gap-0">
       {/* Drag handle */}
-      <button {...attributes} {...listeners} className="px-2 py-4 cursor-grab active:cursor-grabbing text-text-muted hover:text-text-primary shrink-0">
+      <button {...attributes} {...listeners} className="px-2 py-3 cursor-grab active:cursor-grabbing text-text-muted hover:text-text-primary shrink-0">
         <GripVertical className="w-4 h-4" />
       </button>
 
       {/* Thumbnail */}
-      <div className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+      <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
         {imageUrl ? (
-          <img src={imageUrl} alt="" className="w-12 h-12 object-cover rounded-lg" />
+          <img src={imageUrl} alt="" className="w-10 h-10 object-cover rounded-lg" />
         ) : (
-          <div className="w-12 h-12 bg-success/10 flex items-center justify-center rounded-lg">
-            <Salad className="w-5 h-5 text-success" />
+          <div className="w-10 h-10 bg-success/10 flex items-center justify-center rounded-lg">
+            <Salad className="w-4 h-4 text-success" />
           </div>
         )}
       </div>
 
-      {/* Name + notes */}
+      {/* Name */}
       <div className="flex-1 min-w-0 px-3 py-2">
-        <p className="text-sm font-semibold text-text-primary truncate">{displayName}</p>
-        <input type="text" defaultValue={item.notes || ""} placeholder="Lägg till anteckning"
-          onBlur={(e) => onUpdate(item.id, "notes", e.target.value)}
-          className="text-xs text-text-muted w-full bg-transparent focus:outline-none placeholder:text-text-muted/50 mt-0.5" />
+        <p className="text-sm font-medium text-text-primary truncate">{displayName}</p>
       </div>
 
-      {/* Kcal */}
-      <div className="text-center px-2 shrink-0 w-16">
-        <p className="text-[10px] text-text-muted">Kcal</p>
-        <input type="number" defaultValue={Math.round(item.calories || 0)}
-          onBlur={(e) => onUpdate(item.id, "calories", parseFloat(e.target.value) || 0)}
-          className="w-14 text-center text-sm font-semibold border border-border rounded-lg px-1 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50" />
-      </div>
-
-      {/* Protein */}
-      <div className="text-center px-2 shrink-0 w-16">
-        <p className="text-[10px] text-emerald-600">Protein</p>
-        <input type="number" defaultValue={Math.round(item.protein || 0)}
-          onBlur={(e) => onUpdate(item.id, "protein", parseFloat(e.target.value) || 0)}
-          className="w-14 text-center text-sm font-semibold border border-border rounded-lg px-1 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50" />
-      </div>
-
-      {/* Kolhydrater */}
-      <div className="text-center px-2 shrink-0 w-16">
-        <p className="text-[10px] text-fuchsia-600">Karbs</p>
-        <input type="number" defaultValue={Math.round(item.carbs || 0)}
-          onBlur={(e) => onUpdate(item.id, "carbs", parseFloat(e.target.value) || 0)}
-          className="w-14 text-center text-sm font-semibold border border-border rounded-lg px-1 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50" />
-      </div>
-
-      {/* Fett */}
-      <div className="text-center px-2 shrink-0 w-16">
-        <p className="text-[10px] text-teal-600">Fett</p>
-        <input type="number" defaultValue={Math.round(item.fat || 0)}
-          onBlur={(e) => onUpdate(item.id, "fat", parseFloat(e.target.value) || 0)}
-          className="w-14 text-center text-sm font-semibold border border-border rounded-lg px-1 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50" />
+      {/* Grams input */}
+      <div className="flex items-center gap-1 shrink-0 pr-2">
+        <input
+          type="number"
+          defaultValue={item.amount_g ? Math.round(item.amount_g) : ""}
+          placeholder="\u2014"
+          onBlur={(e) => {
+            const g = parseFloat(e.target.value) || 0;
+            onGramsChange(item.id, g);
+          }}
+          className="w-16 text-center text-sm font-semibold border border-border rounded-lg px-1 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary/50"
+        />
+        <span className="text-xs text-text-muted">g</span>
       </div>
 
       {/* Remove */}
       <button onClick={() => onRemove(item.id)} className="text-text-muted hover:text-error p-2 shrink-0">
-        <MoreHorizontal className="w-4 h-4" />
+        <Trash2 className="w-3.5 h-3.5" />
       </button>
     </div>
   );
@@ -169,6 +149,7 @@ export default function MealPlanEditorPage() {
   const [mealMenuId, setMealMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const planImageRef = useRef<HTMLInputElement>(null);
+  const mealRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const supabase = createClient();
   const router = useRouter();
@@ -202,7 +183,6 @@ export default function MealPlanEditorPage() {
     setPlan(data);
     if (data?.image_url) setPlanImageUrl(data.image_url);
 
-    // Flatten all meals across all days and set active
     const allMeals = (data?.meal_plan_days || []).flatMap((d: any) => d.meals || []);
     if (allMeals.length > 0 && !activeMeal) {
       const sorted = [...allMeals].sort((a: any, b: any) => a.sort_order - b.sort_order);
@@ -273,18 +253,29 @@ export default function MealPlanEditorPage() {
   }
 
   // ─── CRUD operations ───────────────────────────────────────
-  async function addRecipeToMeal(recipeId: string) {
-    if (!activeMeal) return;
+  async function addRecipeToMeal(recipeId: string, targetMealId?: string) {
+    const mealId = targetMealId || activeMeal;
+    if (!mealId) return;
     const recipe = recipes.find((r) => r.id === recipeId);
     if (!recipe) return;
 
-    const currentItems = getCurrentItems();
-    const maxSort = currentItems.reduce((max: number, i: any) => Math.max(max, i.sort_order || 0), -1);
+    // Get recipe total weight from ingredients
+    const { data: ingredients } = await supabase
+      .from("recipe_ingredients")
+      .select("amount_g")
+      .eq("recipe_id", recipeId);
+    const totalWeight = (ingredients || []).reduce((sum: number, ing: any) => sum + (ing.amount_g || 0), 0);
+
+    // Get max sort for this meal
+    const meal = getAllMeals().find((m: any) => m.id === mealId);
+    const items = meal ? (meal.meal_items || []) : [];
+    const maxSort = items.reduce((max: number, i: any) => Math.max(max, i.sort_order || 0), -1);
 
     await supabase.from("meal_items").insert({
-      meal_id: activeMeal,
+      meal_id: mealId,
       recipe_id: recipeId,
       servings: 1,
+      amount_g: totalWeight || null,
       sort_order: maxSort + 1,
       calories: recipe.total_calories || 0,
       protein: recipe.total_protein || 0,
@@ -299,13 +290,39 @@ export default function MealPlanEditorPage() {
     loadPlan();
   }
 
-  async function updateItem(itemId: string, field: string, value: any) {
-    await supabase.from("meal_items").update({ [field]: value }).eq("id", itemId);
+  async function handleGramsChange(itemId: string, newGrams: number) {
+    // Find the item to get its current macros and grams for ratio calculation
+    const allItems = getAllMeals().flatMap((m: any) => m.meal_items || []);
+    const item = allItems.find((i: any) => i.id === itemId);
+    if (!item) return;
+
+    const oldGrams = item.amount_g;
+    if (!oldGrams || oldGrams <= 0) {
+      // No previous grams — just save the new grams, keep existing macros
+      await supabase.from("meal_items").update({ amount_g: newGrams }).eq("id", itemId);
+      loadPlan();
+      return;
+    }
+
+    // Calculate scale ratio and new macros
+    const ratio = newGrams / oldGrams;
+    const newCal = Math.round((item.calories || 0) * ratio);
+    const newProt = Math.round((item.protein || 0) * ratio);
+    const newCarbs = Math.round((item.carbs || 0) * ratio);
+    const newFat = Math.round((item.fat || 0) * ratio);
+
+    await supabase.from("meal_items").update({
+      amount_g: newGrams,
+      calories: newCal,
+      protein: newProt,
+      carbs: newCarbs,
+      fat: newFat,
+    }).eq("id", itemId);
+    loadPlan();
   }
 
   async function addNewMeal() {
     if (!addingMealName.trim()) return;
-    // Find the first day (container)
     const day = (plan?.meal_plan_days || [])[0];
     if (!day) return;
 
@@ -324,10 +341,13 @@ export default function MealPlanEditorPage() {
 
   async function removeMeal(mealId: string) {
     const allMeals = getAllMeals();
-    if (allMeals.length <= 1) { alert("Du måste ha minst en måltid."); return; }
-    if (!confirm("Ta bort denna måltid och alla dess recept?")) return;
+    if (allMeals.length <= 1) { alert("Du m\u00e5ste ha minst en m\u00e5ltid."); return; }
+    if (!confirm("Ta bort denna m\u00e5ltid och alla dess recept?")) return;
     await supabase.from("meals").delete().eq("id", mealId);
-    setActiveMeal(null);
+    if (activeMeal === mealId) {
+      const remaining = allMeals.filter((m: any) => m.id !== mealId);
+      setActiveMeal(remaining.length > 0 ? remaining[0].id : null);
+    }
     loadPlan();
   }
 
@@ -378,16 +398,16 @@ export default function MealPlanEditorPage() {
     const { active, over } = event;
     const activeId = String(active.id);
 
-    // Sidebar recipe dropped into meal
+    // Sidebar recipe dropped
     if (activeId.startsWith("sidebar-")) {
       const recipeId = activeId.replace("sidebar-", "");
       if (activeMeal) await addRecipeToMeal(recipeId);
       return;
     }
 
-    // Reorder within meal
+    // Reorder within the active meal
     if (!over || active.id === over.id) return;
-    const items = getCurrentItems();
+    const items = getItemsForMeal(activeMeal);
     const oldIndex = items.findIndex((i: any) => i.id === active.id);
     const newIndex = items.findIndex((i: any) => i.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
@@ -408,10 +428,25 @@ export default function MealPlanEditorPage() {
       .sort((a: any, b: any) => a.sort_order - b.sort_order);
   }
 
-  function getCurrentItems() {
-    const meals = getAllMeals();
-    const currentMeal = meals.find((m: any) => m.id === activeMeal);
-    return currentMeal ? (currentMeal.meal_items || []).sort((a: any, b: any) => a.sort_order - b.sort_order) : [];
+  function getItemsForMeal(mealId: string | null) {
+    if (!mealId) return [];
+    const meal = getAllMeals().find((m: any) => m.id === mealId);
+    return meal ? (meal.meal_items || []).sort((a: any, b: any) => a.sort_order - b.sort_order) : [];
+  }
+
+  function getMealTotals(mealId: string) {
+    const items = getItemsForMeal(mealId);
+    return {
+      calories: items.reduce((s: number, i: any) => s + (i.calories || 0), 0),
+      protein: items.reduce((s: number, i: any) => s + (i.protein || 0), 0),
+      carbs: items.reduce((s: number, i: any) => s + (i.carbs || 0), 0),
+      fat: items.reduce((s: number, i: any) => s + (i.fat || 0), 0),
+    };
+  }
+
+  function scrollToMeal(mealId: string) {
+    setActiveMeal(mealId);
+    mealRefs.current[mealId]?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   const filteredRecipes = recipes.filter((r) => {
@@ -437,7 +472,6 @@ export default function MealPlanEditorPage() {
   if (!plan) return <div className="max-w-4xl mx-auto px-4 py-8 text-center"><p className="text-text-muted">Kostplan hittades inte.</p></div>;
 
   const meals = getAllMeals();
-  const currentItems = getCurrentItems();
 
   return (
     <div className="h-[calc(100vh-64px)] lg:h-screen flex flex-col">
@@ -448,7 +482,6 @@ export default function MealPlanEditorPage() {
             <Link href={assignClientId ? `/clients/${assignClientId}` : "/foods?tab=mallar"} className="text-text-secondary hover:text-text-primary">
               <ArrowLeft className="w-5 h-5" />
             </Link>
-            {/* Plan image */}
             <div className="shrink-0">
               {planImageUrl ? (
                 <div className="relative w-10 h-10 rounded-xl overflow-hidden group cursor-pointer" onClick={() => planImageRef.current?.click()}>
@@ -467,13 +500,7 @@ export default function MealPlanEditorPage() {
             </div>
             <div>
               <h1 className="font-bold text-text-primary">{plan.title}</h1>
-              <div className="flex items-center gap-3 text-xs text-text-muted">
-                {plan.is_template && <span className="text-primary-darker">Mall</span>}
-                {plan.target_calories && <span>Mål: {plan.target_calories} kcal</span>}
-                {plan.target_protein_g && <span>P: {plan.target_protein_g}g</span>}
-                {plan.target_carbs_g && <span>K: {plan.target_carbs_g}g</span>}
-                {plan.target_fat_g && <span>F: {plan.target_fat_g}g</span>}
-              </div>
+              {plan.is_template && <span className="text-xs text-primary-darker">Mall</span>}
             </div>
           </div>
           {assignClientId && (
@@ -485,42 +512,21 @@ export default function MealPlanEditorPage() {
         </div>
       </div>
 
-      {/* Meal tabs */}
+      {/* Meal tabs — scroll-to navigation */}
       <div className="bg-white border-b border-border px-4 shrink-0 overflow-x-auto">
         <div className="flex items-center gap-1 max-w-7xl mx-auto">
           {meals.map((meal: any) => (
-            <div key={meal.id} className="group flex items-center shrink-0">
-              {editingMealId === meal.id ? (
-                <input
-                  value={editingMealName}
-                  onChange={(e) => setEditingMealName(e.target.value)}
-                  onBlur={() => renameMeal(meal.id)}
-                  onKeyDown={(e) => { if (e.key === "Enter") renameMeal(meal.id); if (e.key === "Escape") setEditingMealId(null); }}
-                  autoFocus
-                  className="px-3 py-2 text-sm font-medium border-b-2 border-primary-darker bg-transparent focus:outline-none w-28"
-                />
-              ) : (
-                <button
-                  onClick={() => setActiveMeal(meal.id)}
-                  onDoubleClick={() => { setEditingMealId(meal.id); setEditingMealName(meal.name || `Måltid ${meal.sort_order + 1}`); setMealMenuId(null); }}
-                  className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-                    activeMeal === meal.id
-                      ? "text-primary-darker border-primary-darker"
-                      : "text-text-muted border-transparent hover:text-text-primary"
-                  }`}
-                >
-                  {meal.name || `Måltid ${meal.sort_order + 1}`}
-                </button>
-              )}
-              {editingMealId !== meal.id && (
-                <button
-                  onClick={(e) => openMealMenu(meal.id, e)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-text-muted hover:text-text-primary p-0.5 -ml-1"
-                >
-                  <MoreHorizontal className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
+            <button
+              key={meal.id}
+              onClick={() => scrollToMeal(meal.id)}
+              className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors shrink-0 ${
+                activeMeal === meal.id
+                  ? "text-primary-darker border-primary-darker"
+                  : "text-text-muted border-transparent hover:text-text-primary"
+              }`}
+            >
+              {meal.name || `M\u00e5ltid ${meal.sort_order + 1}`}
+            </button>
           ))}
           <button onClick={() => setShowAddMeal(true)} className="px-3 py-3 text-text-muted hover:text-text-primary shrink-0">
             <Plus className="w-4 h-4" />
@@ -528,7 +534,7 @@ export default function MealPlanEditorPage() {
         </div>
       </div>
 
-      {/* Tab dropdown menu (fixed to avoid overflow clipping) */}
+      {/* Tab dropdown menu */}
       {mealMenuId && menuPos && (
         <div
           className="fixed bg-white border border-border rounded-lg shadow-lg z-50 py-1 min-w-[140px]"
@@ -557,7 +563,7 @@ export default function MealPlanEditorPage() {
             <input
               value={addingMealName}
               onChange={(e) => setAddingMealName(e.target.value)}
-              placeholder="Måltidsnamn, t.ex. Frukost, Lunch, Kväll..."
+              placeholder="M\u00e5ltidsnamn, t.ex. Frukost, Lunch, Kv\u00e4ll..."
               autoFocus
               className="flex-1 rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
               onKeyDown={(e) => e.key === "Enter" && addNewMeal()}
@@ -568,7 +574,7 @@ export default function MealPlanEditorPage() {
         </div>
       )}
 
-      {/* Main content */}
+      {/* Main content — stacked meals */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <div className="flex-1 flex overflow-hidden">
         {/* Recipe library sidebar */}
@@ -580,7 +586,7 @@ export default function MealPlanEditorPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Sök recept..."
+                placeholder="S\u00f6k recept..."
                 className="w-full rounded-lg border border-border pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
               />
             </div>
@@ -589,7 +595,7 @@ export default function MealPlanEditorPage() {
             {filteredRecipes.length === 0 ? (
               <div className="p-4 text-center">
                 <p className="text-xs text-text-muted">Inga recept hittades</p>
-                <Link href="/foods/new-recipe" className="text-xs text-primary-darker hover:underline mt-1 inline-block">Skapa recept →</Link>
+                <Link href="/foods/new-recipe" className="text-xs text-primary-darker hover:underline mt-1 inline-block">Skapa recept &rarr;</Link>
               </div>
             ) : (
               filteredRecipes.map((recipe) => (
@@ -603,37 +609,92 @@ export default function MealPlanEditorPage() {
           </div>
         </div>
 
-        {/* Meal items (main area) */}
+        {/* All meals stacked (main area) */}
         <div className="flex-1 overflow-y-auto bg-surface p-4 lg:p-6">
-          {!activeMeal ? (
+          {meals.length === 0 ? (
             <div className="text-center py-16">
               <Salad className="w-12 h-12 text-text-muted mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-text-primary">Inga måltider</h3>
-              <p className="text-text-secondary mt-1">Skapa en måltid för att börja</p>
-              <Button className="mt-4" onClick={() => setShowAddMeal(true)}><Plus className="w-4 h-4" /> Skapa måltid</Button>
-            </div>
-          ) : currentItems.length === 0 ? (
-            <div className="text-center py-16">
-              <Salad className="w-12 h-12 text-text-muted mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-text-primary">Inga recept</h3>
-              <p className="text-text-secondary mt-1">Dra recept från listan till vänster</p>
-              <div className="lg:hidden mt-4">
-                <Link href="/foods/new-recipe"><Button variant="secondary"><Plus className="w-4 h-4" /> Skapa recept</Button></Link>
-              </div>
+              <h3 className="text-lg font-semibold text-text-primary">Inga m\u00e5ltider</h3>
+              <p className="text-text-secondary mt-1">Skapa en m\u00e5ltid f\u00f6r att b\u00f6rja</p>
+              <Button className="mt-4" onClick={() => setShowAddMeal(true)}><Plus className="w-4 h-4" /> Skapa m\u00e5ltid</Button>
             </div>
           ) : (
-            <SortableContext items={currentItems.map((i: any) => i.id)} strategy={verticalListSortingStrategy}>
-            <div className="max-w-4xl space-y-2">
-              {currentItems.map((item: any) => (
-                <SortableMealItemRow
-                  key={item.id}
-                  item={item}
-                  onRemove={removeItem}
-                  onUpdate={updateItem}
-                />
-              ))}
+            <div className="max-w-4xl space-y-6">
+              {meals.map((meal: any) => {
+                const items = getItemsForMeal(meal.id);
+                const totals = getMealTotals(meal.id);
+                const isActive = activeMeal === meal.id;
+
+                return (
+                  <div
+                    key={meal.id}
+                    ref={(el) => { mealRefs.current[meal.id] = el; }}
+                    className={`rounded-2xl transition-all ${isActive ? "ring-2 ring-primary/20" : ""}`}
+                    onClick={() => setActiveMeal(meal.id)}
+                  >
+                    {/* Meal section header */}
+                    <div className="flex items-center justify-between px-1 mb-2">
+                      <div className="flex items-center gap-2 group">
+                        {editingMealId === meal.id ? (
+                          <input
+                            value={editingMealName}
+                            onChange={(e) => setEditingMealName(e.target.value)}
+                            onBlur={() => renameMeal(meal.id)}
+                            onKeyDown={(e) => { if (e.key === "Enter") renameMeal(meal.id); if (e.key === "Escape") setEditingMealId(null); }}
+                            autoFocus
+                            className="text-lg font-bold text-text-primary bg-transparent border-b-2 border-primary-darker focus:outline-none"
+                          />
+                        ) : (
+                          <h3
+                            className="text-lg font-bold text-text-primary cursor-pointer"
+                            onDoubleClick={() => { setEditingMealId(meal.id); setEditingMealName(meal.name || ""); }}
+                          >
+                            {meal.name || `M\u00e5ltid ${meal.sort_order + 1}`}
+                          </h3>
+                        )}
+                        <button
+                          onClick={(e) => openMealMenu(meal.id, e)}
+                          className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-text-primary p-0.5 transition-opacity"
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Auto-calculated totals */}
+                      {items.length > 0 && (
+                        <div className="flex items-center gap-3 text-xs">
+                          <span className="font-bold text-text-primary">{Math.round(totals.calories)} kcal</span>
+                          <span className="text-emerald-600 font-semibold">P: {Math.round(totals.protein)}g</span>
+                          <span className="text-fuchsia-600 font-semibold">K: {Math.round(totals.carbs)}g</span>
+                          <span className="text-teal-600 font-semibold">F: {Math.round(totals.fat)}g</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Items list */}
+                    <SortableContext items={items.map((i: any) => i.id)} strategy={verticalListSortingStrategy}>
+                      <div className="space-y-1.5">
+                        {items.map((item: any) => (
+                          <SortableMealItemRow
+                            key={item.id}
+                            item={item}
+                            onRemove={removeItem}
+                            onGramsChange={handleGramsChange}
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
+
+                    {/* Empty state for this meal */}
+                    {items.length === 0 && (
+                      <div className="bg-white/50 rounded-xl border border-dashed border-border py-6 text-center">
+                        <p className="text-sm text-text-muted">Dra recept hit eller klicka i listan</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            </SortableContext>
           )}
         </div>
       </div>
