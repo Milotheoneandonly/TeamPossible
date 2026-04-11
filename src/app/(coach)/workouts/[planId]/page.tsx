@@ -188,6 +188,9 @@ export default function WorkoutPlanDetailPage() {
   const [addingDayName, setAddingDayName] = useState("");
   const [showAddDay, setShowAddDay] = useState(false);
   const [videoModal, setVideoModal] = useState<{ title: string; url: string } | null>(null);
+  const [editingDayId, setEditingDayId] = useState<string | null>(null);
+  const [editingDayName, setEditingDayName] = useState("");
+  const [dayMenuId, setDayMenuId] = useState<string | null>(null);
 
   const supabase = createClient();
   const router = useRouter();
@@ -243,7 +246,6 @@ export default function WorkoutPlanDetailPage() {
   async function handleAssignToClient() {
     if (!assignClientId || !plan) return;
     setSaving(true);
-    await supabase.from("workout_plans").update({ is_active: false }).eq("client_id", assignClientId).eq("is_active", true);
 
     if (plan.is_template) {
       const { data: newPlan } = await supabase.from("workout_plans").insert({
@@ -302,6 +304,22 @@ export default function WorkoutPlanDetailPage() {
     setShowAddDay(false);
     loadPlan();
     if (newDay) setActiveDay(newDay.id);
+  }
+
+  async function renameDay(dayId: string) {
+    if (!editingDayName.trim()) { setEditingDayId(null); return; }
+    await supabase.from("workout_days").update({ name: editingDayName.trim() }).eq("id", dayId);
+    setEditingDayId(null);
+    loadPlan();
+  }
+
+  async function deleteDay(dayId: string) {
+    const allDays = plan?.workout_days || [];
+    if (allDays.length <= 1) { alert("Du måste ha minst ett pass."); return; }
+    if (!confirm("Ta bort detta pass och alla övningar i det?")) return;
+    await supabase.from("workout_days").delete().eq("id", dayId);
+    if (activeDay === dayId) setActiveDay(null);
+    loadPlan();
   }
 
   const sensors = useSensors(
@@ -393,17 +411,54 @@ export default function WorkoutPlanDetailPage() {
       <div className="bg-white border-b border-border px-4 shrink-0 overflow-x-auto">
         <div className="flex items-center gap-1 max-w-7xl mx-auto">
           {days.map((day: any) => (
-            <button
-              key={day.id}
-              onClick={() => setActiveDay(day.id)}
-              className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-                activeDay === day.id
-                  ? "text-primary-darker border-primary-darker"
-                  : "text-text-muted border-transparent hover:text-text-primary"
-              }`}
-            >
-              {day.name || `Dag ${day.day_number}`}
-            </button>
+            <div key={day.id} className="relative group flex items-center">
+              {editingDayId === day.id ? (
+                <input
+                  value={editingDayName}
+                  onChange={(e) => setEditingDayName(e.target.value)}
+                  onBlur={() => renameDay(day.id)}
+                  onKeyDown={(e) => { if (e.key === "Enter") renameDay(day.id); if (e.key === "Escape") setEditingDayId(null); }}
+                  autoFocus
+                  className="px-3 py-2 text-sm font-medium border-b-2 border-primary-darker bg-transparent focus:outline-none w-28"
+                />
+              ) : (
+                <button
+                  onClick={() => setActiveDay(day.id)}
+                  onDoubleClick={() => { setEditingDayId(day.id); setEditingDayName(day.name || `Dag ${day.day_number}`); setDayMenuId(null); }}
+                  className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                    activeDay === day.id
+                      ? "text-primary-darker border-primary-darker"
+                      : "text-text-muted border-transparent hover:text-text-primary"
+                  }`}
+                >
+                  {day.name || `Dag ${day.day_number}`}
+                </button>
+              )}
+              {editingDayId !== day.id && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setDayMenuId(dayMenuId === day.id ? null : day.id); }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-text-muted hover:text-text-primary p-0.5 -ml-1"
+                >
+                  <MoreHorizontal className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {dayMenuId === day.id && (
+                <div className="absolute top-full left-0 mt-1 bg-white border border-border rounded-lg shadow-lg z-50 py-1 min-w-[140px]">
+                  <button
+                    onClick={() => { setEditingDayId(day.id); setEditingDayName(day.name || `Dag ${day.day_number}`); setDayMenuId(null); }}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-surface transition-colors"
+                  >
+                    Byt namn
+                  </button>
+                  <button
+                    onClick={() => { setDayMenuId(null); deleteDay(day.id); }}
+                    className="w-full text-left px-3 py-2 text-sm text-error hover:bg-red-50 transition-colors"
+                  >
+                    Ta bort
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
           <button
             onClick={() => setShowAddDay(true)}

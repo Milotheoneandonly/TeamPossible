@@ -89,14 +89,7 @@ export async function createMealPlan(data: {
 export async function assignMealPlanToClient(planId: string, clientId: string) {
   const supabase = await createClient();
 
-  // Deactivate any current active plan for this client
-  await supabase
-    .from("meal_plans")
-    .update({ is_active: false })
-    .eq("client_id", clientId)
-    .eq("is_active", true);
-
-  // Activate the new plan
+  // Activate the new plan (multiple active plans allowed)
   const { error } = await supabase
     .from("meal_plans")
     .update({ client_id: clientId, is_active: true })

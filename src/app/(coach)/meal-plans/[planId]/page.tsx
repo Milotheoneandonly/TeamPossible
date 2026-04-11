@@ -164,6 +164,9 @@ export default function MealPlanEditorPage() {
   const [addingMealName, setAddingMealName] = useState("");
   const [showAddMeal, setShowAddMeal] = useState(false);
   const [planImageUrl, setPlanImageUrl] = useState<string | null>(null);
+  const [editingMealId, setEditingMealId] = useState<string | null>(null);
+  const [editingMealName, setEditingMealName] = useState("");
+  const [mealMenuId, setMealMenuId] = useState<string | null>(null);
   const planImageRef = useRef<HTMLInputElement>(null);
 
   const supabase = createClient();
@@ -229,7 +232,6 @@ export default function MealPlanEditorPage() {
   async function handleAssignToClient() {
     if (!assignClientId || !plan) return;
     setSaving(true);
-    await supabase.from("meal_plans").update({ is_active: false }).eq("client_id", assignClientId).eq("is_active", true);
 
     if (plan.is_template) {
       const { data: newPlan } = await supabase.from("meal_plans").insert({
@@ -320,9 +322,18 @@ export default function MealPlanEditorPage() {
   }
 
   async function removeMeal(mealId: string) {
+    const allMeals = getAllMeals();
+    if (allMeals.length <= 1) { alert("Du måste ha minst en måltid."); return; }
     if (!confirm("Ta bort denna måltid och alla dess recept?")) return;
     await supabase.from("meals").delete().eq("id", mealId);
     setActiveMeal(null);
+    loadPlan();
+  }
+
+  async function renameMeal(mealId: string) {
+    if (!editingMealName.trim()) { setEditingMealId(null); return; }
+    await supabase.from("meals").update({ name: editingMealName.trim() }).eq("id", mealId);
+    setEditingMealId(null);
     loadPlan();
   }
 
@@ -462,17 +473,54 @@ export default function MealPlanEditorPage() {
       <div className="bg-white border-b border-border px-4 shrink-0 overflow-x-auto">
         <div className="flex items-center gap-1 max-w-7xl mx-auto">
           {meals.map((meal: any) => (
-            <button
-              key={meal.id}
-              onClick={() => setActiveMeal(meal.id)}
-              className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-                activeMeal === meal.id
-                  ? "text-primary-darker border-primary-darker"
-                  : "text-text-muted border-transparent hover:text-text-primary"
-              }`}
-            >
-              {meal.name || `Måltid ${meal.sort_order + 1}`}
-            </button>
+            <div key={meal.id} className="relative group flex items-center">
+              {editingMealId === meal.id ? (
+                <input
+                  value={editingMealName}
+                  onChange={(e) => setEditingMealName(e.target.value)}
+                  onBlur={() => renameMeal(meal.id)}
+                  onKeyDown={(e) => { if (e.key === "Enter") renameMeal(meal.id); if (e.key === "Escape") setEditingMealId(null); }}
+                  autoFocus
+                  className="px-3 py-2 text-sm font-medium border-b-2 border-primary-darker bg-transparent focus:outline-none w-28"
+                />
+              ) : (
+                <button
+                  onClick={() => setActiveMeal(meal.id)}
+                  onDoubleClick={() => { setEditingMealId(meal.id); setEditingMealName(meal.name || `Måltid ${meal.sort_order + 1}`); setMealMenuId(null); }}
+                  className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                    activeMeal === meal.id
+                      ? "text-primary-darker border-primary-darker"
+                      : "text-text-muted border-transparent hover:text-text-primary"
+                  }`}
+                >
+                  {meal.name || `Måltid ${meal.sort_order + 1}`}
+                </button>
+              )}
+              {editingMealId !== meal.id && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setMealMenuId(mealMenuId === meal.id ? null : meal.id); }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-text-muted hover:text-text-primary p-0.5 -ml-1"
+                >
+                  <MoreHorizontal className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {mealMenuId === meal.id && (
+                <div className="absolute top-full left-0 mt-1 bg-white border border-border rounded-lg shadow-lg z-50 py-1 min-w-[140px]">
+                  <button
+                    onClick={() => { setEditingMealId(meal.id); setEditingMealName(meal.name || `Måltid ${meal.sort_order + 1}`); setMealMenuId(null); }}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-surface transition-colors"
+                  >
+                    Byt namn
+                  </button>
+                  <button
+                    onClick={() => { setMealMenuId(null); removeMeal(meal.id); }}
+                    className="w-full text-left px-3 py-2 text-sm text-error hover:bg-red-50 transition-colors"
+                  >
+                    Ta bort
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
           <button onClick={() => setShowAddMeal(true)} className="px-3 py-3 text-text-muted hover:text-text-primary">
             <Plus className="w-4 h-4" />

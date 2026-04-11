@@ -143,14 +143,7 @@ export async function updateWorkoutExercise(
 export async function assignWorkoutPlanToClient(planId: string, clientId: string) {
   const supabase = await createClient();
 
-  // Deactivate any current active plan
-  await supabase
-    .from("workout_plans")
-    .update({ is_active: false })
-    .eq("client_id", clientId)
-    .eq("is_active", true);
-
-  // Activate the new plan
+  // Activate the new plan (multiple active plans allowed)
   const { error } = await supabase
     .from("workout_plans")
     .update({ client_id: clientId, is_active: true })
