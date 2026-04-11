@@ -74,36 +74,21 @@ export default async function ClientDetailPage({
     else nextCheckInText = `Om ${daysUntil} dagar`;
   }
 
-  // Active meal plan
-  const { data: activeMealPlan } = await supabase
+  // Active meal plans (multiple allowed)
+  const { data: activeMealPlans } = await supabase
     .from("meal_plans")
     .select("id, title, target_calories")
     .eq("client_id", clientId)
     .eq("is_active", true)
-    .single();
+    .order("created_at", { ascending: false });
 
-  // Count meals in active plan
-  let mealCount = 0;
-  if (activeMealPlan) {
-    const { count } = await supabase
-      .from("meal_plan_days")
-      .select("id", { count: "exact", head: true })
-      .eq("plan_id", activeMealPlan.id);
-    // Actually count meals, not days
-    const { data: days } = await supabase
-      .from("meal_plan_days")
-      .select("meals(id)")
-      .eq("plan_id", activeMealPlan.id);
-    mealCount = (days || []).reduce((acc: number, d: any) => acc + (d.meals?.length || 0), 0);
-  }
-
-  // Active workout plan
-  const { data: activeWorkoutPlan } = await supabase
+  // Active workout plans (multiple allowed)
+  const { data: activeWorkoutPlans } = await supabase
     .from("workout_plans")
     .select("id, title, workout_days(id)")
     .eq("client_id", clientId)
     .eq("is_active", true)
-    .single();
+    .order("created_at", { ascending: false });
 
   // Unread messages
   const { count: unreadMessages } = await supabase
@@ -230,11 +215,15 @@ export default async function ClientDetailPage({
             <p className="text-xs text-text-muted">Kostschema</p>
             <Link href={`/clients/${clientId}/naring`}><ArrowUpRight className="w-4 h-4 text-text-muted hover:text-text-primary" /></Link>
           </div>
-          {activeMealPlan ? (
-            <>
-              <p className="text-3xl font-bold text-text-primary">{activeMealPlan.target_calories || "—"} <span className="text-sm font-normal text-text-muted">kcal</span></p>
-              <p className="text-xs text-text-muted mt-1">{mealCount} måltider/dag</p>
-            </>
+          {activeMealPlans && activeMealPlans.length > 0 ? (
+            <div className="space-y-1.5">
+              {activeMealPlans.map((plan: any) => (
+                <Link key={plan.id} href={`/meal-plans/${plan.id}`} className="block hover:opacity-80 transition-opacity">
+                  <p className="text-sm font-semibold text-text-primary">{plan.title}</p>
+                  {plan.target_calories && <p className="text-xs text-text-muted">{plan.target_calories} kcal</p>}
+                </Link>
+              ))}
+            </div>
           ) : (
             <>
               <p className="text-sm text-text-muted mb-2">Inget kostschema tilldelat</p>
@@ -249,11 +238,15 @@ export default async function ClientDetailPage({
             <p className="text-xs text-text-muted">Träning</p>
             <Link href={`/clients/${clientId}/traning`}><ArrowUpRight className="w-4 h-4 text-text-muted hover:text-text-primary" /></Link>
           </div>
-          {activeWorkoutPlan ? (
-            <>
-              <p className="text-3xl font-bold text-text-primary">{(activeWorkoutPlan as any).workout_days?.length || 0} <span className="text-sm font-normal text-text-muted">Pass</span></p>
-              <p className="text-xs text-text-muted mt-1">{activeWorkoutPlan.title}</p>
-            </>
+          {activeWorkoutPlans && activeWorkoutPlans.length > 0 ? (
+            <div className="space-y-1.5">
+              {activeWorkoutPlans.map((plan: any) => (
+                <Link key={plan.id} href={`/workouts/${plan.id}`} className="block hover:opacity-80 transition-opacity">
+                  <p className="text-sm font-semibold text-text-primary">{plan.title}</p>
+                  <p className="text-xs text-text-muted">{(plan as any).workout_days?.length || 0} pass</p>
+                </Link>
+              ))}
+            </div>
           ) : (
             <>
               <p className="text-sm text-text-muted mb-2">Inget program tilldelat</p>

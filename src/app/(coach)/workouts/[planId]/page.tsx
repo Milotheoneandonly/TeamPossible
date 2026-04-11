@@ -191,6 +191,7 @@ export default function WorkoutPlanDetailPage() {
   const [editingDayId, setEditingDayId] = useState<string | null>(null);
   const [editingDayName, setEditingDayName] = useState("");
   const [dayMenuId, setDayMenuId] = useState<string | null>(null);
+  const [dayMenuPos, setDayMenuPos] = useState<{ top: number; left: number } | null>(null);
 
   const supabase = createClient();
   const router = useRouter();
@@ -322,6 +323,21 @@ export default function WorkoutPlanDetailPage() {
     loadPlan();
   }
 
+  function openDayMenu(dayId: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (dayMenuId === dayId) { setDayMenuId(null); setDayMenuPos(null); return; }
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setDayMenuPos({ top: rect.bottom + 4, left: rect.left });
+    setDayMenuId(dayId);
+  }
+
+  useEffect(() => {
+    if (!dayMenuId) return;
+    function close() { setDayMenuId(null); setDayMenuPos(null); }
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [dayMenuId]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -411,7 +427,7 @@ export default function WorkoutPlanDetailPage() {
       <div className="bg-white border-b border-border px-4 shrink-0 overflow-x-auto">
         <div className="flex items-center gap-1 max-w-7xl mx-auto">
           {days.map((day: any) => (
-            <div key={day.id} className="relative group flex items-center">
+            <div key={day.id} className="group flex items-center shrink-0">
               {editingDayId === day.id ? (
                 <input
                   value={editingDayName}
@@ -436,38 +452,44 @@ export default function WorkoutPlanDetailPage() {
               )}
               {editingDayId !== day.id && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); setDayMenuId(dayMenuId === day.id ? null : day.id); }}
+                  onClick={(e) => openDayMenu(day.id, e)}
                   className="opacity-0 group-hover:opacity-100 transition-opacity text-text-muted hover:text-text-primary p-0.5 -ml-1"
                 >
                   <MoreHorizontal className="w-3.5 h-3.5" />
                 </button>
               )}
-              {dayMenuId === day.id && (
-                <div className="absolute top-full left-0 mt-1 bg-white border border-border rounded-lg shadow-lg z-50 py-1 min-w-[140px]">
-                  <button
-                    onClick={() => { setEditingDayId(day.id); setEditingDayName(day.name || `Dag ${day.day_number}`); setDayMenuId(null); }}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-surface transition-colors"
-                  >
-                    Byt namn
-                  </button>
-                  <button
-                    onClick={() => { setDayMenuId(null); deleteDay(day.id); }}
-                    className="w-full text-left px-3 py-2 text-sm text-error hover:bg-red-50 transition-colors"
-                  >
-                    Ta bort
-                  </button>
-                </div>
-              )}
             </div>
           ))}
           <button
             onClick={() => setShowAddDay(true)}
-            className="px-3 py-3 text-text-muted hover:text-text-primary"
+            className="px-3 py-3 text-text-muted hover:text-text-primary shrink-0"
           >
             <Plus className="w-4 h-4" />
           </button>
         </div>
       </div>
+
+      {/* Day dropdown menu (fixed to avoid overflow clipping) */}
+      {dayMenuId && dayMenuPos && (
+        <div
+          className="fixed bg-white border border-border rounded-lg shadow-lg z-50 py-1 min-w-[140px]"
+          style={{ top: dayMenuPos.top, left: dayMenuPos.left }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => { const d = days.find((d: any) => d.id === dayMenuId); setEditingDayId(dayMenuId); setEditingDayName(d?.name || ""); setDayMenuId(null); setDayMenuPos(null); }}
+            className="w-full text-left px-3 py-2 text-sm hover:bg-surface transition-colors"
+          >
+            Byt namn
+          </button>
+          <button
+            onClick={() => { const id = dayMenuId; setDayMenuId(null); setDayMenuPos(null); deleteDay(id); }}
+            className="w-full text-left px-3 py-2 text-sm text-error hover:bg-red-50 transition-colors"
+          >
+            Ta bort
+          </button>
+        </div>
+      )}
 
       {/* Add day modal */}
       {showAddDay && (

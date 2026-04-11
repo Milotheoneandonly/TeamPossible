@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus, Salad, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DeleteMealPlanButton } from "@/components/coach/delete-button";
+import { PlanStatusToggle } from "@/components/coach/plan-status-toggle";
 
 const MEAL_TAG_LABELS: Record<string, string> = {
   breakfast: "Frukost", lunch: "Lunch", dinner: "Middag", snack: "Mellanmål",
@@ -134,7 +135,7 @@ export default async function NutritionPage({
                       <p className="text-sm text-text-muted">{plan.client?.profile?.first_name} {plan.client?.profile?.last_name}{plan.target_calories && ` — ${plan.target_calories} kcal`}</p>
                     </Link>
                     <div className="flex items-center gap-2 shrink-0">
-                      {plan.is_active && <span className="text-xs font-medium bg-success/10 text-success px-2.5 py-1 rounded-full">Aktiv</span>}
+                      <PlanStatusToggle planId={plan.id} isActive={plan.is_active} table="meal_plans" />
                       <DeleteMealPlanButton planId={plan.id} planTitle={plan.title} />
                     </div>
                   </div>

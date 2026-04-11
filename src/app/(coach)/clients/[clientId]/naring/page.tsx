@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Salad, Plus, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DeleteMealPlanButton } from "@/components/coach/delete-button";
+import { PlanStatusToggle } from "@/components/coach/plan-status-toggle";
 
 export default async function ClientNaringPage({
   params,
@@ -91,11 +92,7 @@ export default async function ClientNaringPage({
                     </div>
                   </Link>
                   <p className="text-sm text-text-secondary">{plan.target_calories || "—"} kcal</p>
-                  {plan.is_active ? (
-                    <span className="text-xs font-medium bg-success/10 text-success px-2.5 py-1 rounded-full w-fit">Aktiv</span>
-                  ) : (
-                    <span className="text-xs text-text-muted">Inaktiv</span>
-                  )}
+                  <PlanStatusToggle planId={plan.id} isActive={plan.is_active} table="meal_plans" />
                   <DeleteMealPlanButton planId={plan.id} planTitle={plan.title} />
                 </div>
               );

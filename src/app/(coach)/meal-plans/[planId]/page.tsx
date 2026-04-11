@@ -167,6 +167,7 @@ export default function MealPlanEditorPage() {
   const [editingMealId, setEditingMealId] = useState<string | null>(null);
   const [editingMealName, setEditingMealName] = useState("");
   const [mealMenuId, setMealMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const planImageRef = useRef<HTMLInputElement>(null);
 
   const supabase = createClient();
@@ -337,6 +338,21 @@ export default function MealPlanEditorPage() {
     loadPlan();
   }
 
+  function openMealMenu(mealId: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (mealMenuId === mealId) { setMealMenuId(null); setMenuPos(null); return; }
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setMenuPos({ top: rect.bottom + 4, left: rect.left });
+    setMealMenuId(mealId);
+  }
+
+  useEffect(() => {
+    if (!mealMenuId) return;
+    function close() { setMealMenuId(null); setMenuPos(null); }
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [mealMenuId]);
+
   async function uploadPlanImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
@@ -473,7 +489,7 @@ export default function MealPlanEditorPage() {
       <div className="bg-white border-b border-border px-4 shrink-0 overflow-x-auto">
         <div className="flex items-center gap-1 max-w-7xl mx-auto">
           {meals.map((meal: any) => (
-            <div key={meal.id} className="relative group flex items-center">
+            <div key={meal.id} className="group flex items-center shrink-0">
               {editingMealId === meal.id ? (
                 <input
                   value={editingMealName}
@@ -498,35 +514,41 @@ export default function MealPlanEditorPage() {
               )}
               {editingMealId !== meal.id && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); setMealMenuId(mealMenuId === meal.id ? null : meal.id); }}
+                  onClick={(e) => openMealMenu(meal.id, e)}
                   className="opacity-0 group-hover:opacity-100 transition-opacity text-text-muted hover:text-text-primary p-0.5 -ml-1"
                 >
                   <MoreHorizontal className="w-3.5 h-3.5" />
                 </button>
               )}
-              {mealMenuId === meal.id && (
-                <div className="absolute top-full left-0 mt-1 bg-white border border-border rounded-lg shadow-lg z-50 py-1 min-w-[140px]">
-                  <button
-                    onClick={() => { setEditingMealId(meal.id); setEditingMealName(meal.name || `Måltid ${meal.sort_order + 1}`); setMealMenuId(null); }}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-surface transition-colors"
-                  >
-                    Byt namn
-                  </button>
-                  <button
-                    onClick={() => { setMealMenuId(null); removeMeal(meal.id); }}
-                    className="w-full text-left px-3 py-2 text-sm text-error hover:bg-red-50 transition-colors"
-                  >
-                    Ta bort
-                  </button>
-                </div>
-              )}
             </div>
           ))}
-          <button onClick={() => setShowAddMeal(true)} className="px-3 py-3 text-text-muted hover:text-text-primary">
+          <button onClick={() => setShowAddMeal(true)} className="px-3 py-3 text-text-muted hover:text-text-primary shrink-0">
             <Plus className="w-4 h-4" />
           </button>
         </div>
       </div>
+
+      {/* Tab dropdown menu (fixed to avoid overflow clipping) */}
+      {mealMenuId && menuPos && (
+        <div
+          className="fixed bg-white border border-border rounded-lg shadow-lg z-50 py-1 min-w-[140px]"
+          style={{ top: menuPos.top, left: menuPos.left }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => { const m = meals.find((m: any) => m.id === mealMenuId); setEditingMealId(mealMenuId); setEditingMealName(m?.name || ""); setMealMenuId(null); setMenuPos(null); }}
+            className="w-full text-left px-3 py-2 text-sm hover:bg-surface transition-colors"
+          >
+            Byt namn
+          </button>
+          <button
+            onClick={() => { const id = mealMenuId; setMealMenuId(null); setMenuPos(null); removeMeal(id); }}
+            className="w-full text-left px-3 py-2 text-sm text-error hover:bg-red-50 transition-colors"
+          >
+            Ta bort
+          </button>
+        </div>
+      )}
 
       {/* Add meal input */}
       {showAddMeal && (
