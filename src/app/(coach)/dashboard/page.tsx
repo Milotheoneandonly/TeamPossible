@@ -82,7 +82,6 @@ export default async function CoachDashboard() {
     .eq("status", "kontaktad");
 
   const { greeting, emoji } = getGreeting();
-  const quote = "It\u2019s not about perfect. It\u2019s about effort. And when you bring that effort every single day, that\u2019s when transformation happens.";
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -335,14 +334,6 @@ export default async function CoachDashboard() {
             )}
           </div>
         </div>
-      </div>
-
-      {/* Motivational quote — fixed bottom right */}
-      <div className="fixed bottom-6 right-8 text-right max-w-sm z-10 hidden lg:block">
-        <p className="text-sm text-text-primary/70 italic leading-relaxed font-medium">
-          {quote}
-        </p>
-        <p className="text-xs text-text-primary/40 font-bold mt-1.5 tracking-widest uppercase">Possible</p>
       </div>
 
     </div>
