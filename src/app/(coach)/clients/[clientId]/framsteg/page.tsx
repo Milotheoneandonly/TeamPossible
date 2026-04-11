@@ -280,7 +280,18 @@ export default async function ClientFramstegPage({
         {checkIns && checkIns.length > 0 ? (
           <div className="bg-white rounded-2xl border border-border shadow-sm divide-y divide-border-light">
             {checkIns.map((ci: any) => {
-              const entry = progressEntries?.find((pe: any) => pe.check_in_id === ci.id);
+              // Match by check_in_id first, then fall back to date proximity
+              let entry = progressEntries?.find((pe: any) => pe.check_in_id === ci.id);
+              if (!entry) {
+                const ciDate = ci.submitted_at || ci.created_at;
+                if (ciDate) {
+                  const ciTime = new Date(ciDate).getTime();
+                  entry = progressEntries?.find((pe: any) => {
+                    const peTime = new Date(pe.date || pe.created_at).getTime();
+                    return Math.abs(ciTime - peTime) < 24 * 60 * 60 * 1000; // within 24h
+                  });
+                }
+              }
               return (
                 <div key={ci.id} className="px-5 py-4">
                   <div className="flex items-center justify-between mb-2">
@@ -298,10 +309,12 @@ export default async function ClientFramstegPage({
                     </span>
                   </div>
                   {entry && (
-                    <div className="flex gap-4 text-sm text-text-secondary">
-                      {entry.weight_kg && <span>Vikt: {entry.weight_kg} kg</span>}
-                      {entry.energy_level && <span>Energi: {entry.energy_level}/10</span>}
-                      {entry.sleep_hours_avg && <span>Sömn: {entry.sleep_hours_avg}h</span>}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-text-secondary">
+                      {entry.weight_kg && <span>Vikt: <strong>{entry.weight_kg} kg</strong></span>}
+                      {entry.energy_level && <span>Energi: <strong>{entry.energy_level}/10</strong></span>}
+                      {entry.stress_level && <span>Stress: <strong>{entry.stress_level}/10</strong></span>}
+                      {entry.sleep_hours_avg && <span>Sömn: <strong>{entry.sleep_hours_avg}h</strong></span>}
+                      {entry.waist_cm && <span>Midja: <strong>{entry.waist_cm} cm</strong></span>}
                     </div>
                   )}
                   {entry?.notes && (

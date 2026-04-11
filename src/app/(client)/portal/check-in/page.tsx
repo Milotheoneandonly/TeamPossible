@@ -42,9 +42,34 @@ export default function CheckInPage() {
 
     if (!client) return;
 
-    // Create progress entry
+    // 1. Find or create a check-in record
+    let checkInId: string | null = null;
+
+    // Try to find an existing pending check-in
+    const { data: pendingCheckIn } = await supabase
+      .from("check_ins")
+      .select("id")
+      .eq("client_id", client.id)
+      .eq("status", "pending")
+      .limit(1)
+      .single();
+
+    if (pendingCheckIn) {
+      checkInId = pendingCheckIn.id;
+    } else {
+      // Create a new check-in record
+      const { data: newCheckIn } = await supabase
+        .from("check_ins")
+        .insert({ client_id: client.id, status: "pending" })
+        .select("id")
+        .single();
+      if (newCheckIn) checkInId = newCheckIn.id;
+    }
+
+    // 2. Create progress entry linked to the check-in
     const { error } = await supabase.from("progress_entries").insert({
       client_id: client.id,
+      check_in_id: checkInId,
       weight_kg: weight ? parseFloat(weight) : null,
       waist_cm: waist ? parseFloat(waist) : null,
       chest_cm: chest ? parseFloat(chest) : null,
@@ -59,12 +84,13 @@ export default function CheckInPage() {
       notes: notes || null,
     });
 
-    // Mark any pending check-in as submitted
-    await supabase
-      .from("check_ins")
-      .update({ status: "submitted", submitted_at: new Date().toISOString() })
-      .eq("client_id", client.id)
-      .eq("status", "pending");
+    // 3. Mark the check-in as submitted
+    if (checkInId) {
+      await supabase
+        .from("check_ins")
+        .update({ status: "submitted", submitted_at: new Date().toISOString() })
+        .eq("id", checkInId);
+    }
 
     setLoading(false);
     if (!error) {
@@ -124,60 +150,12 @@ export default function CheckInPage() {
           <CardContent>
             <h3 className="font-semibold text-text-primary mb-3">Mått (cm)</h3>
             <div className="grid grid-cols-2 gap-3">
-              <Input
-                id="waist"
-                type="number"
-                step="0.1"
-                placeholder="Midja"
-                value={waist}
-                onChange={(e) => setWaist(e.target.value)}
-                label="Midja"
-              />
-              <Input
-                id="chest"
-                type="number"
-                step="0.1"
-                placeholder="Bröst"
-                value={chest}
-                onChange={(e) => setChest(e.target.value)}
-                label="Bröst"
-              />
-              <Input
-                id="hips"
-                type="number"
-                step="0.1"
-                placeholder="Höfter"
-                value={hips}
-                onChange={(e) => setHips(e.target.value)}
-                label="Höfter"
-              />
-              <Input
-                id="armLeft"
-                type="number"
-                step="0.1"
-                placeholder="Arm V"
-                value={armLeft}
-                onChange={(e) => setArmLeft(e.target.value)}
-                label="Arm (V)"
-              />
-              <Input
-                id="armRight"
-                type="number"
-                step="0.1"
-                placeholder="Arm H"
-                value={armRight}
-                onChange={(e) => setArmRight(e.target.value)}
-                label="Arm (H)"
-              />
-              <Input
-                id="thighLeft"
-                type="number"
-                step="0.1"
-                placeholder="Lår V"
-                value={thighLeft}
-                onChange={(e) => setThighLeft(e.target.value)}
-                label="Lår (V)"
-              />
+              <Input id="waist" type="number" step="0.1" placeholder="Midja" value={waist} onChange={(e) => setWaist(e.target.value)} label="Midja" />
+              <Input id="chest" type="number" step="0.1" placeholder="Bröst" value={chest} onChange={(e) => setChest(e.target.value)} label="Bröst" />
+              <Input id="hips" type="number" step="0.1" placeholder="Höfter" value={hips} onChange={(e) => setHips(e.target.value)} label="Höfter" />
+              <Input id="armLeft" type="number" step="0.1" placeholder="Arm V" value={armLeft} onChange={(e) => setArmLeft(e.target.value)} label="Arm (V)" />
+              <Input id="armRight" type="number" step="0.1" placeholder="Arm H" value={armRight} onChange={(e) => setArmRight(e.target.value)} label="Arm (H)" />
+              <Input id="thighLeft" type="number" step="0.1" placeholder="Lår V" value={thighLeft} onChange={(e) => setThighLeft(e.target.value)} label="Lår (V)" />
             </div>
           </CardContent>
         </Card>
@@ -191,46 +169,18 @@ export default function CheckInPage() {
                 <label className="text-sm font-medium text-text-primary block mb-2">
                   Energinivå: {energy}/10
                 </label>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  value={energy}
-                  onChange={(e) => setEnergy(e.target.value)}
-                  className="w-full accent-primary"
-                />
-                <div className="flex justify-between text-xs text-text-muted mt-1">
-                  <span>Låg</span>
-                  <span>Hög</span>
-                </div>
+                <input type="range" min="1" max="10" value={energy} onChange={(e) => setEnergy(e.target.value)} className="w-full accent-primary" />
+                <div className="flex justify-between text-xs text-text-muted mt-1"><span>Låg</span><span>Hög</span></div>
               </div>
 
-              <Input
-                id="sleep"
-                type="number"
-                step="0.5"
-                placeholder="Ex: 7.5"
-                value={sleep}
-                onChange={(e) => setSleep(e.target.value)}
-                label="Genomsnittlig sömn (timmar)"
-              />
+              <Input id="sleep" type="number" step="0.5" placeholder="Ex: 7.5" value={sleep} onChange={(e) => setSleep(e.target.value)} label="Genomsnittlig sömn (timmar)" />
 
               <div>
                 <label className="text-sm font-medium text-text-primary block mb-2">
                   Stressnivå: {stress}/10
                 </label>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  value={stress}
-                  onChange={(e) => setStress(e.target.value)}
-                  className="w-full accent-primary"
-                />
-                <div className="flex justify-between text-xs text-text-muted mt-1">
-                  <span>Låg</span>
-                  <span>Hög</span>
-                </div>
+                <input type="range" min="1" max="10" value={stress} onChange={(e) => setStress(e.target.value)} className="w-full accent-primary" />
+                <div className="flex justify-between text-xs text-text-muted mt-1"><span>Låg</span><span>Hög</span></div>
               </div>
             </div>
           </CardContent>
@@ -250,11 +200,7 @@ export default function CheckInPage() {
         </Card>
 
         <Button type="submit" className="w-full" size="lg" disabled={loading}>
-          {loading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : (
-            <CheckCircle className="w-5 h-5" />
-          )}
+          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
           {loading ? "Skickar..." : "Skicka check-in"}
         </Button>
       </form>
