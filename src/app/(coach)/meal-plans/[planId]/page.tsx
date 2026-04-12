@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
-  useSensor, useSensors, useDraggable, type DragEndEvent,
+  useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove, SortableContext, sortableKeyboardCoordinates,
@@ -122,6 +122,39 @@ function SortableMealItemRow({ item, onRemove, onGramsChange }: {
       <button onClick={() => onRemove(item.id)} className="text-text-muted hover:text-error p-2 shrink-0">
         <Trash2 className="w-3.5 h-3.5" />
       </button>
+    </div>
+  );
+}
+
+// ─── Meal section wrapper (sortable + droppable) ────────────
+function MealSectionWrapper({
+  mealId, isActive, onClick, scrollRef, children,
+}: {
+  mealId: string;
+  isActive: boolean;
+  onClick: () => void;
+  scrollRef: (el: HTMLDivElement | null) => void;
+  children: (dragHandleProps: { attributes: Record<string, any>; listeners: Record<string, any> | undefined }) => React.ReactNode;
+}) {
+  const sortable = useSortable({ id: `meal-section-${mealId}` });
+  const droppable = useDroppable({ id: `meal-drop-${mealId}` });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(sortable.transform),
+    transition: sortable.transition,
+    opacity: sortable.isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <div
+      ref={(el) => { sortable.setNodeRef(el); droppable.setNodeRef(el); scrollRef(el); }}
+      style={style}
+      className={`rounded-2xl transition-all ${
+        isActive ? "ring-2 ring-primary/20" : ""
+      } ${droppable.isOver && !sortable.isDragging ? "ring-2 ring-success/30 bg-success/5" : ""}`}
+      onClick={onClick}
+    >
+      {children({ attributes: sortable.attributes, listeners: sortable.listeners })}
     </div>
   );
 }
@@ -291,34 +324,40 @@ export default function MealPlanEditorPage() {
   }
 
   async function handleGramsChange(itemId: string, newGrams: number) {
-    // Find the item to get its current macros and grams for ratio calculation
     const allItems = getAllMeals().flatMap((m: any) => m.meal_items || []);
     const item = allItems.find((i: any) => i.id === itemId);
     if (!item) return;
 
     const oldGrams = item.amount_g;
-    if (!oldGrams || oldGrams <= 0) {
-      // No previous grams — just save the new grams, keep existing macros
-      await supabase.from("meal_items").update({ amount_g: newGrams }).eq("id", itemId);
-      loadPlan();
-      return;
+    const updates: any = { amount_g: newGrams };
+
+    if (oldGrams && oldGrams > 0) {
+      const ratio = newGrams / oldGrams;
+      updates.calories = Math.round((item.calories || 0) * ratio);
+      updates.protein = Math.round((item.protein || 0) * ratio);
+      updates.carbs = Math.round((item.carbs || 0) * ratio);
+      updates.fat = Math.round((item.fat || 0) * ratio);
     }
 
-    // Calculate scale ratio and new macros
-    const ratio = newGrams / oldGrams;
-    const newCal = Math.round((item.calories || 0) * ratio);
-    const newProt = Math.round((item.protein || 0) * ratio);
-    const newCarbs = Math.round((item.carbs || 0) * ratio);
-    const newFat = Math.round((item.fat || 0) * ratio);
+    // Optimistic local update — header totals update instantly
+    setPlan((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        meal_plan_days: prev.meal_plan_days.map((d: any) => ({
+          ...d,
+          meals: d.meals.map((m: any) => ({
+            ...m,
+            meal_items: m.meal_items.map((i: any) =>
+              i.id === itemId ? { ...i, ...updates } : i
+            ),
+          })),
+        })),
+      };
+    });
 
-    await supabase.from("meal_items").update({
-      amount_g: newGrams,
-      calories: newCal,
-      protein: newProt,
-      carbs: newCarbs,
-      fat: newFat,
-    }).eq("id", itemId);
-    loadPlan();
+    // Persist to DB
+    await supabase.from("meal_items").update(updates).eq("id", itemId);
   }
 
   async function addNewMeal() {
@@ -396,18 +435,53 @@ export default function MealPlanEditorPage() {
 
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
+    if (!over) return;
     const activeId = String(active.id);
+    const overId = String(over.id);
 
-    // Sidebar recipe dropped
+    // 1. Sidebar recipe dropped → find target meal from drop position
     if (activeId.startsWith("sidebar-")) {
       const recipeId = activeId.replace("sidebar-", "");
-      if (activeMeal) await addRecipeToMeal(recipeId);
+      let targetMealId = activeMeal;
+
+      if (overId.startsWith("meal-drop-")) {
+        targetMealId = overId.replace("meal-drop-", "");
+      } else if (overId.startsWith("meal-section-")) {
+        targetMealId = overId.replace("meal-section-", "");
+      } else {
+        const parentMeal = findMealForItem(overId);
+        if (parentMeal) targetMealId = parentMeal;
+      }
+
+      if (targetMealId) await addRecipeToMeal(recipeId, targetMealId);
       return;
     }
 
-    // Reorder within the active meal
-    if (!over || active.id === over.id) return;
-    const items = getItemsForMeal(activeMeal);
+    // 2. Meal section reordered
+    if (activeId.startsWith("meal-section-") && overId.startsWith("meal-section-")) {
+      if (activeId === overId) return;
+      const fromMealId = activeId.replace("meal-section-", "");
+      const toMealId = overId.replace("meal-section-", "");
+      const allMeals = getAllMeals();
+      const oldIndex = allMeals.findIndex((m: any) => m.id === fromMealId);
+      const newIndex = allMeals.findIndex((m: any) => m.id === toMealId);
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      const reordered = arrayMove([...allMeals], oldIndex, newIndex);
+      for (let i = 0; i < reordered.length; i++) {
+        if (reordered[i].sort_order !== i) {
+          await supabase.from("meals").update({ sort_order: i }).eq("id", reordered[i].id);
+        }
+      }
+      loadPlan();
+      return;
+    }
+
+    // 3. Reorder items within a meal
+    if (active.id === over.id) return;
+    const mealId = findMealForItem(activeId);
+    if (!mealId) return;
+    const items = getItemsForMeal(mealId);
     const oldIndex = items.findIndex((i: any) => i.id === active.id);
     const newIndex = items.findIndex((i: any) => i.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
@@ -442,6 +516,15 @@ export default function MealPlanEditorPage() {
       carbs: items.reduce((s: number, i: any) => s + (i.carbs || 0), 0),
       fat: items.reduce((s: number, i: any) => s + (i.fat || 0), 0),
     };
+  }
+
+  function findMealForItem(itemId: string): string | null {
+    for (const meal of getAllMeals()) {
+      if ((meal.meal_items || []).some((i: any) => i.id === itemId)) {
+        return meal.id;
+      }
+    }
+    return null;
   }
 
   function scrollToMeal(mealId: string) {
@@ -619,6 +702,7 @@ export default function MealPlanEditorPage() {
               <Button className="mt-4" onClick={() => setShowAddMeal(true)}><Plus className="w-4 h-4" /> Skapa m\u00e5ltid</Button>
             </div>
           ) : (
+            <SortableContext items={meals.map((m: any) => `meal-section-${m.id}`)} strategy={verticalListSortingStrategy}>
             <div className="max-w-4xl space-y-6">
               {meals.map((meal: any) => {
                 const items = getItemsForMeal(meal.id);
@@ -626,75 +710,84 @@ export default function MealPlanEditorPage() {
                 const isActive = activeMeal === meal.id;
 
                 return (
-                  <div
+                  <MealSectionWrapper
                     key={meal.id}
-                    ref={(el) => { mealRefs.current[meal.id] = el; }}
-                    className={`rounded-2xl transition-all ${isActive ? "ring-2 ring-primary/20" : ""}`}
+                    mealId={meal.id}
+                    isActive={isActive}
                     onClick={() => setActiveMeal(meal.id)}
+                    scrollRef={(el) => { mealRefs.current[meal.id] = el; }}
                   >
-                    {/* Meal section header */}
-                    <div className="flex items-center justify-between px-1 mb-2">
-                      <div className="flex items-center gap-2 group">
-                        {editingMealId === meal.id ? (
-                          <input
-                            value={editingMealName}
-                            onChange={(e) => setEditingMealName(e.target.value)}
-                            onBlur={() => renameMeal(meal.id)}
-                            onKeyDown={(e) => { if (e.key === "Enter") renameMeal(meal.id); if (e.key === "Escape") setEditingMealId(null); }}
-                            autoFocus
-                            className="text-lg font-bold text-text-primary bg-transparent border-b-2 border-primary-darker focus:outline-none"
-                          />
-                        ) : (
-                          <h3
-                            className="text-lg font-bold text-text-primary cursor-pointer"
-                            onDoubleClick={() => { setEditingMealId(meal.id); setEditingMealName(meal.name || ""); }}
-                          >
-                            {meal.name || `M\u00e5ltid ${meal.sort_order + 1}`}
-                          </h3>
-                        )}
-                        <button
-                          onClick={(e) => openMealMenu(meal.id, e)}
-                          className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-text-primary p-0.5 transition-opacity"
-                        >
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
-                      </div>
+                    {({ attributes, listeners }) => (
+                      <>
+                        {/* Meal section header */}
+                        <div className="flex items-center justify-between px-1 mb-2">
+                          <div className="flex items-center gap-2 group">
+                            <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-text-muted hover:text-text-primary p-0.5 touch-none">
+                              <GripVertical className="w-4 h-4" />
+                            </button>
+                            {editingMealId === meal.id ? (
+                              <input
+                                value={editingMealName}
+                                onChange={(e) => setEditingMealName(e.target.value)}
+                                onBlur={() => renameMeal(meal.id)}
+                                onKeyDown={(e) => { if (e.key === "Enter") renameMeal(meal.id); if (e.key === "Escape") setEditingMealId(null); }}
+                                autoFocus
+                                className="text-lg font-bold text-text-primary bg-transparent border-b-2 border-primary-darker focus:outline-none"
+                              />
+                            ) : (
+                              <h3
+                                className="text-lg font-bold text-text-primary cursor-pointer"
+                                onDoubleClick={() => { setEditingMealId(meal.id); setEditingMealName(meal.name || ""); }}
+                              >
+                                {meal.name || `M\u00e5ltid ${meal.sort_order + 1}`}
+                              </h3>
+                            )}
+                            <button
+                              onClick={(e) => openMealMenu(meal.id, e)}
+                              className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-text-primary p-0.5 transition-opacity"
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </button>
+                          </div>
 
-                      {/* Auto-calculated totals */}
-                      {items.length > 0 && (
-                        <div className="flex items-center gap-3 text-xs">
-                          <span className="font-bold text-text-primary">{Math.round(totals.calories)} kcal</span>
-                          <span className="text-emerald-600 font-semibold">P: {Math.round(totals.protein)}g</span>
-                          <span className="text-fuchsia-600 font-semibold">K: {Math.round(totals.carbs)}g</span>
-                          <span className="text-teal-600 font-semibold">F: {Math.round(totals.fat)}g</span>
+                          {/* Auto-calculated totals */}
+                          {items.length > 0 && (
+                            <div className="flex items-center gap-3 text-xs">
+                              <span className="font-bold text-text-primary">{Math.round(totals.calories)} kcal</span>
+                              <span className="text-emerald-600 font-semibold">P: {Math.round(totals.protein)}g</span>
+                              <span className="text-fuchsia-600 font-semibold">K: {Math.round(totals.carbs)}g</span>
+                              <span className="text-teal-600 font-semibold">F: {Math.round(totals.fat)}g</span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
 
-                    {/* Items list */}
-                    <SortableContext items={items.map((i: any) => i.id)} strategy={verticalListSortingStrategy}>
-                      <div className="space-y-1.5">
-                        {items.map((item: any) => (
-                          <SortableMealItemRow
-                            key={item.id}
-                            item={item}
-                            onRemove={removeItem}
-                            onGramsChange={handleGramsChange}
-                          />
-                        ))}
-                      </div>
-                    </SortableContext>
+                        {/* Items list */}
+                        <SortableContext items={items.map((i: any) => i.id)} strategy={verticalListSortingStrategy}>
+                          <div className="space-y-1.5">
+                            {items.map((item: any) => (
+                              <SortableMealItemRow
+                                key={item.id}
+                                item={item}
+                                onRemove={removeItem}
+                                onGramsChange={handleGramsChange}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
 
-                    {/* Empty state for this meal */}
-                    {items.length === 0 && (
-                      <div className="bg-white/50 rounded-xl border border-dashed border-border py-6 text-center">
-                        <p className="text-sm text-text-muted">Dra recept hit eller klicka i listan</p>
-                      </div>
+                        {/* Empty state for this meal */}
+                        {items.length === 0 && (
+                          <div className="bg-white/50 rounded-xl border border-dashed border-border py-6 text-center">
+                            <p className="text-sm text-text-muted">Dra recept hit eller klicka i listan</p>
+                          </div>
+                        )}
+                      </>
                     )}
-                  </div>
+                  </MealSectionWrapper>
                 );
               })}
             </div>
+            </SortableContext>
           )}
         </div>
       </div>
