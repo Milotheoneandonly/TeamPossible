@@ -7,6 +7,7 @@ import Link from "next/link";
 import {
   ArrowLeft, Check, Loader2, X, Play, StickyNote, Clock, Dumbbell,
 } from "lucide-react";
+import { getYouTubeThumbnail } from "@/lib/youtube";
 
 interface SetRow { weight: string; reps: string; completed: boolean; }
 interface ExerciseState {
@@ -109,11 +110,12 @@ export default function WorkoutSessionPage() {
           const ex = we.exercise;
           const last = lastSetsByExercise[ex?.id] || [];
           const targetSets = we.sets || 3;
+          const thumb = ex?.thumbnail_url || (ex?.video_url ? getYouTubeThumbnail(ex.video_url) : null);
           return {
             weId: we.id,
             exerciseId: ex?.id || "",
             name: ex?.name_sv || ex?.name || "Övning",
-            thumbnailUrl: ex?.thumbnail_url || null,
+            thumbnailUrl: thumb,
             videoUrl: ex?.video_url || null,
             muscleGroups: ex?.muscle_groups || [],
             equipment: ex?.equipment || [],
@@ -401,7 +403,7 @@ export default function WorkoutSessionPage() {
                 </p>
               )}
               {ex.coachNotes && (
-                <p className="text-xs text-text-secondary italic mt-1.5 pl-1">
+                <p className="text-sm font-bold text-text-primary mt-1.5 pl-1">
                   Coach: {ex.coachNotes}
                 </p>
               )}

@@ -60,14 +60,14 @@ export default async function WorkoutsPage() {
 
         return (
           <section key={plan.id}>
-            {/* Hero image */}
-            <div className="relative w-full aspect-[16/10] overflow-hidden bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900">
+            {/* Hero image — compact */}
+            <div className="relative w-full h-36 overflow-hidden bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900">
               {plan.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={plan.image_url} alt="" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center opacity-20">
-                  <Dumbbell className="w-20 h-20 text-white" />
+                  <Dumbbell className="w-12 h-12 text-white" />
                 </div>
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
@@ -95,18 +95,8 @@ export default async function WorkoutsPage() {
                   <Link
                     key={day.id}
                     href={`/portal/workouts/day/${day.id}`}
-                    className="flex items-center gap-3 bg-white rounded-2xl border border-border p-3 shadow-sm hover:border-primary/40 hover:shadow-md transition-all active:scale-[0.99]"
+                    className="flex items-center gap-3 bg-white rounded-2xl border border-border p-4 shadow-sm hover:border-primary/40 hover:shadow-md transition-all active:scale-[0.99]"
                   >
-                    <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-200 shrink-0">
-                      {plan.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={plan.image_url} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center">
-                          <Dumbbell className="w-5 h-5 text-white/80" />
-                        </div>
-                      )}
-                    </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-text-primary text-sm leading-snug truncate">
                         {day.name || `Dag ${day.day_number}`}

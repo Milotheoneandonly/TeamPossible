@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Clock, Dumbbell, Play } from "lucide-react";
+import { getYouTubeThumbnail } from "@/lib/youtube";
 
 // Friendly Swedish labels for muscle_groups / equipment slugs coming from exercise DB
 const MUSCLE_LABELS: Record<string, string> = {
@@ -164,14 +165,15 @@ export default async function WorkoutDayPage({
             const ex = we.exercise;
             const name = ex?.name_sv || ex?.name || "Övning";
             const rest = we.rest_seconds ? `${Math.round(we.rest_seconds / 60)} m vila` : null;
+            const thumb = ex?.thumbnail_url || (ex?.video_url ? getYouTubeThumbnail(ex.video_url) : null);
             return (
               <div key={we.id}>
                 <p className="font-bold text-text-primary text-sm mb-1.5">{name}</p>
                 <div className="bg-white rounded-2xl border border-border p-3 shadow-sm flex items-center gap-3">
                   <div className="w-14 h-14 rounded-xl overflow-hidden bg-surface shrink-0 border border-border-light">
-                    {ex?.thumbnail_url ? (
+                    {thumb ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={ex.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                      <img src={thumb} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
                         <Dumbbell className="w-5 h-5 text-slate-400" />
@@ -192,7 +194,7 @@ export default async function WorkoutDayPage({
                   </p>
                 )}
                 {we.notes && (
-                  <p className="text-xs text-text-muted mt-1 italic pl-1">{we.notes}</p>
+                  <p className="text-sm font-bold text-text-primary mt-1.5 pl-1">{we.notes}</p>
                 )}
               </div>
             );

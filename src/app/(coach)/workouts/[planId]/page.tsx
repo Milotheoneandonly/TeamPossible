@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft, Dumbbell, Loader2, UserPlus, CheckCircle,
-  Plus, Search, X, GripVertical, Play, MoreHorizontal,
+  Plus, Search, X, GripVertical, Play, MoreHorizontal, Camera,
 } from "lucide-react";
 import { VideoModal } from "@/components/coach/video-modal";
 import { getYouTubeThumbnail } from "@/lib/youtube";
@@ -192,6 +192,8 @@ export default function WorkoutPlanDetailPage() {
   const [editingDayName, setEditingDayName] = useState("");
   const [dayMenuId, setDayMenuId] = useState<string | null>(null);
   const [dayMenuPos, setDayMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [planImageUrl, setPlanImageUrl] = useState<string | null>(null);
+  const planImageRef = useRef<HTMLInputElement>(null);
 
   const supabase = createClient();
   const router = useRouter();
@@ -219,6 +221,7 @@ export default function WorkoutPlanDetailPage() {
       .single();
 
     setPlan(data);
+    if (data?.image_url) setPlanImageUrl(data.image_url);
     if (data?.workout_days?.length > 0 && !activeDay) {
       const sorted = [...data.workout_days].sort((a: any, b: any) => (a.sort_order ?? a.day_number) - (b.sort_order ?? b.day_number));
       setActiveDay(sorted[0].id);
@@ -244,13 +247,30 @@ export default function WorkoutPlanDetailPage() {
     if (data?.profile) setClientName(`${(data.profile as any).first_name} ${(data.profile as any).last_name}`);
   }
 
+  async function uploadPlanImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const fileExt = file.name.split(".").pop();
+    const filePath = `workout-plans/${user.id}/${Date.now()}.${fileExt}`;
+    const { error: uploadError } = await supabase.storage
+      .from("recipe-images")
+      .upload(filePath, file, { upsert: true });
+    if (!uploadError) {
+      const { data: { publicUrl } } = supabase.storage.from("recipe-images").getPublicUrl(filePath);
+      await supabase.from("workout_plans").update({ image_url: publicUrl }).eq("id", planId);
+      setPlanImageUrl(publicUrl);
+    }
+  }
+
   async function handleAssignToClient() {
     if (!assignClientId || !plan) return;
     setSaving(true);
 
     if (plan.is_template) {
       const { data: newPlan } = await supabase.from("workout_plans").insert({
-        coach_id: plan.coach_id, client_id: assignClientId, title: plan.title, description: plan.description, is_template: false, is_active: true,
+        coach_id: plan.coach_id, client_id: assignClientId, title: plan.title, description: plan.description, is_template: false, is_active: true, image_url: plan.image_url,
       }).select().single();
 
       if (newPlan) {
@@ -409,6 +429,22 @@ export default function WorkoutPlanDetailPage() {
             <Link href={assignClientId ? `/clients/${assignClientId}` : "/workouts"} className="text-text-secondary hover:text-text-primary">
               <ArrowLeft className="w-5 h-5" />
             </Link>
+            <div className="shrink-0">
+              {planImageUrl ? (
+                <div className="relative w-10 h-10 rounded-xl overflow-hidden group cursor-pointer" onClick={() => planImageRef.current?.click()}>
+                  <img src={planImageUrl} alt="" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <Camera className="w-3 h-3 text-white" />
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => planImageRef.current?.click()}
+                  className="w-10 h-10 rounded-xl border-2 border-dashed border-border bg-surface flex flex-col items-center justify-center hover:border-primary/50 transition-colors">
+                  <Camera className="w-4 h-4 text-text-muted" />
+                </button>
+              )}
+              <input ref={planImageRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadPlanImage} className="hidden" />
+            </div>
             <div>
               <h1 className="font-bold text-text-primary">{plan.title}</h1>
               {plan.is_template && <span className="text-xs text-primary-darker">Mall</span>}
