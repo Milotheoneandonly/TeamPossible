@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Play, ChevronRight } from "lucide-react";
+import { Dumbbell, ChevronRight } from "lucide-react";
 
 export default async function WorkoutsPage() {
   const supabase = await createClient();
@@ -22,122 +22,110 @@ export default async function WorkoutsPage() {
     );
   }
 
-  const { data: workoutPlan } = await supabase
+  // Fetch ALL active plans (multiple allowed). No .single() — fixes the old silent null bug.
+  const { data: plans } = await supabase
     .from("workout_plans")
     .select(`
-      id, title, description,
+      id, title, description, image_url,
       workout_days (
         id, day_number, name, sort_order,
-        workout_exercises (
-          id, sets, reps, rest_seconds, tempo, notes, sort_order, superset_group,
-          exercise:exercises (id, name, name_sv, muscle_groups, equipment, video_url, thumbnail_url)
-        )
+        workout_exercises ( id, sets )
       )
     `)
     .eq("client_id", client.id)
     .eq("is_active", true)
-    .single();
+    .order("created_at", { ascending: false });
 
-  if (!workoutPlan) {
+  if (!plans || plans.length === 0) {
     return (
       <div className="space-y-4">
         <h1 className="text-xl font-bold text-text-primary">Träning</h1>
-        <div className="bg-white rounded-2xl border border-border p-8 text-center shadow-sm">
-          <p className="text-text-muted">Inget aktivt träningsprogram tilldelat än.</p>
-          <p className="text-sm text-text-muted mt-2">
-            Din coach kommer att tilldela ett program åt dig.
-          </p>
+        <div className="bg-white rounded-2xl border border-border p-10 text-center shadow-sm">
+          <div className="w-14 h-14 rounded-full bg-primary-lighter/40 flex items-center justify-center mx-auto mb-4">
+            <Dumbbell className="w-6 h-6 text-primary-darker" />
+          </div>
+          <p className="font-semibold text-text-primary">Inget aktivt träningsprogram</p>
+          <p className="text-sm text-text-muted mt-1">Din coach kommer att tilldela ett program till dig.</p>
         </div>
       </div>
     );
   }
 
-  const days = (workoutPlan.workout_days || []).sort(
-    (a: any, b: any) => (a.sort_order ?? a.day_number) - (b.sort_order ?? b.day_number)
-  );
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-text-primary">{workoutPlan.title}</h1>
-        {workoutPlan.description && (
-          <p className="text-sm text-text-secondary mt-1">{workoutPlan.description}</p>
-        )}
-      </div>
+    <div className="space-y-8 -mx-4 -mt-6">
+      {plans.map((plan: any) => {
+        const days = (plan.workout_days || []).sort(
+          (a: any, b: any) => (a.sort_order ?? a.day_number) - (b.sort_order ?? b.day_number)
+        );
 
-      <div className="space-y-3">
-        {days.map((day: any) => {
-          const exercises = (day.workout_exercises || []).sort(
-            (a: any, b: any) => a.sort_order - b.sort_order
-          );
-
-          return (
-            <div key={day.id} className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
-              {/* Day header */}
-              <div className="px-4 py-3 bg-surface border-b border-border flex items-center justify-between">
-                <h2 className="font-semibold text-text-primary">
-                  {day.name || `Dag ${day.day_number}`}
-                </h2>
-                <span className="text-xs text-text-muted bg-white px-2 py-1 rounded-lg">
-                  {exercises.length} övningar
-                </span>
-              </div>
-
-              {/* Exercises */}
-              <div className="divide-y divide-border-light">
-                {exercises.map((we: any, idx: number) => {
-                  const ex = we.exercise;
-                  const name = ex?.name_sv || ex?.name || "Okänd övning";
-                  const muscles = ex?.muscle_groups?.join(", ") || "";
-
-                  return (
-                    <div key={we.id} className="px-4 py-3">
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-primary-lighter flex items-center justify-center shrink-0 mt-0.5">
-                          <span className="text-xs font-bold text-primary-darker">
-                            {idx + 1}
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-text-primary text-sm">
-                            {name}
-                          </p>
-                          {muscles && (
-                            <p className="text-xs text-text-muted mt-0.5">{muscles}</p>
-                          )}
-                          <div className="flex gap-3 mt-1.5 text-xs text-text-secondary">
-                            <span>{we.sets} set × {we.reps} reps</span>
-                            {we.rest_seconds && (
-                              <span>Vila: {we.rest_seconds}s</span>
-                            )}
-                            {we.tempo && <span>Tempo: {we.tempo}</span>}
-                          </div>
-                          {we.notes && (
-                            <p className="text-xs text-text-muted mt-1 italic">
-                              {we.notes}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Log workout button */}
-              <div className="px-4 py-3 border-t border-border">
-                <Link
-                  href={`/portal/workouts/log?day=${day.id}`}
-                  className="flex items-center justify-center gap-2 w-full py-2.5 bg-primary text-white font-semibold text-sm rounded-xl hover:bg-primary-dark transition-colors"
-                >
-                  <Play className="w-4 h-4" />
-                  Logga träning
-                </Link>
-              </div>
+        return (
+          <section key={plan.id}>
+            {/* Hero image */}
+            <div className="relative w-full aspect-[16/10] overflow-hidden bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900">
+              {plan.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={plan.image_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center opacity-20">
+                  <Dumbbell className="w-20 h-20 text-white" />
+                </div>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
             </div>
-          );
-        })}
-      </div>
+
+            {/* Plan title + description */}
+            <div className="px-4 pt-5">
+              <h1 className="text-2xl font-bold text-text-primary leading-tight">{plan.title}</h1>
+              {plan.description && (
+                <p className="text-sm text-text-secondary mt-1.5">{plan.description}</p>
+              )}
+              <p className="text-sm font-semibold text-text-primary mt-5">Plan översikt</p>
+            </div>
+
+            {/* Days list */}
+            <div className="mt-3 px-4 space-y-2.5">
+              {days.map((day: any) => {
+                const exerciseCount = day.workout_exercises?.length || 0;
+                const setCount = (day.workout_exercises || []).reduce(
+                  (sum: number, we: any) => sum + (we.sets || 0),
+                  0
+                );
+
+                return (
+                  <Link
+                    key={day.id}
+                    href={`/portal/workouts/day/${day.id}`}
+                    className="flex items-center gap-3 bg-white rounded-2xl border border-border p-3 shadow-sm hover:border-primary/40 hover:shadow-md transition-all active:scale-[0.99]"
+                  >
+                    <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-200 shrink-0">
+                      {plan.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={plan.image_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center">
+                          <Dumbbell className="w-5 h-5 text-white/80" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-text-primary text-sm leading-snug truncate">
+                        {day.name || `Dag ${day.day_number}`}
+                      </p>
+                      <p className="text-xs text-text-muted mt-0.5">
+                        {exerciseCount} övningar
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs font-medium text-text-secondary">{setCount} set</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-text-muted shrink-0" />
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }
