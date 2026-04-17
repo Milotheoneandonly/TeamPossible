@@ -2,8 +2,20 @@ import { createClient } from "@/lib/supabase/server";
 import { getClient } from "@/actions/clients";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Scale, Ruler, Zap, Moon, Heart, TrendingUp, TrendingDown, Minus, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Scale, Ruler, Moon, Heart, TrendingUp, TrendingDown, Minus, Image as ImageIcon, ChevronDown } from "lucide-react";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
+
+const QUESTION_LABELS: Record<string, string> = {
+  training: "Träning",
+  nutrition: "Kost",
+  motivation: "Motivation & mental",
+  hydration_steps: "Vätska & steg",
+  injury: "Skador / hälsa",
+  menstruation: "Menstruationscykel",
+  wins: "Veckans framgångar",
+  improvement: "Fokus nästa vecka",
+  questions: "Frågor / önskemål",
+};
 
 export default async function ClientFramstegPage({
   params,
@@ -33,12 +45,48 @@ export default async function ClientFramstegPage({
     .order("created_at", { ascending: false })
     .limit(20);
 
-  // Get progress photos
-  const { data: photos } = await supabase
-    .from("progress_photos")
-    .select("id, storage_path, photo_type, created_at, progress_entry_id")
-    .eq("progress_entry_id", progressEntries?.[0]?.id || "00000000-0000-0000-0000-000000000000")
-    .order("created_at", { ascending: false });
+  // Get all progress photos for this client (across all entries)
+  const entryIds = (progressEntries || []).map((e: any) => e.id);
+  const { data: photoRows } = entryIds.length > 0
+    ? await supabase
+        .from("progress_photos")
+        .select("id, storage_path, photo_type, created_at, progress_entry_id")
+        .in("progress_entry_id", entryIds)
+        .order("created_at", { ascending: false })
+    : { data: [] as any[] };
+
+  // Generate signed URLs for all photos (private bucket)
+  let signedPhotos: Array<{
+    id: string;
+    url: string;
+    photo_type: string;
+    progress_entry_id: string;
+    created_at: string;
+  }> = [];
+  if (photoRows && photoRows.length > 0) {
+    const paths = photoRows.map((p: any) => p.storage_path);
+    const { data: signed } = await supabase.storage
+      .from("progress-photos")
+      .createSignedUrls(paths, 60 * 60); // 1 hour
+    if (signed) {
+      signedPhotos = photoRows
+        .map((p: any, i: number) => ({
+          id: p.id,
+          url: signed[i]?.signedUrl || "",
+          photo_type: p.photo_type,
+          progress_entry_id: p.progress_entry_id,
+          created_at: p.created_at,
+        }))
+        .filter((p) => p.url);
+    }
+  }
+
+  // Group photos by entry (so we show one row per check-in)
+  const photosByEntry: Record<string, typeof signedPhotos> = {};
+  for (const p of signedPhotos) {
+    if (!photosByEntry[p.progress_entry_id]) photosByEntry[p.progress_entry_id] = [];
+    photosByEntry[p.progress_entry_id].push(p);
+  }
 
   const latest = progressEntries?.[0];
   const previous = progressEntries?.[1];
@@ -48,6 +96,9 @@ export default async function ClientFramstegPage({
     ? (latest.weight_kg - previous.weight_kg).toFixed(1) : null;
   const totalWeightChange = latest?.weight_kg && oldest?.weight_kg && progressEntries!.length > 1
     ? (latest.weight_kg - oldest.weight_kg).toFixed(1) : null;
+
+  const photoTypeOrder: Record<string, number> = { front: 0, side: 1, back: 2, other: 3 };
+  const photoTypeLabel: Record<string, string> = { front: "Framsida", side: "Sida", back: "Baksida", other: "Extra" };
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -79,7 +130,6 @@ export default async function ClientFramstegPage({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Latest check-in summary */}
             <div className="space-y-4">
-              {/* Wellness ratings */}
               <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {latest.energy_level && (
@@ -101,18 +151,11 @@ export default async function ClientFramstegPage({
                     </div>
                   )}
                 </div>
-                {latest.notes && (
-                  <div className="mt-4 pt-4 border-t border-border-light">
-                    <p className="text-xs text-text-muted mb-1">Kommentar</p>
-                    <p className="text-sm text-text-secondary">{latest.notes}</p>
-                  </div>
-                )}
                 <p className="text-xs text-text-muted mt-3">
                   {new Date(latest.date).toLocaleDateString("sv-SE", { day: "numeric", month: "long", year: "numeric" })}
                 </p>
               </div>
 
-              {/* Client goals */}
               {client.goals && (
                 <div className="bg-primary-lighter/50 rounded-2xl border border-primary/10 p-5">
                   <p className="text-xs text-primary-darker font-medium mb-1">Klientens mål</p>
@@ -123,7 +166,6 @@ export default async function ClientFramstegPage({
 
             {/* Quick stats cards */}
             <div className="grid grid-cols-2 gap-3">
-              {/* Weight */}
               <div className="bg-white rounded-2xl border border-border p-4 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs text-text-muted">Vikt</p>
@@ -137,7 +179,6 @@ export default async function ClientFramstegPage({
                 )}
               </div>
 
-              {/* Weight change */}
               <div className="bg-white rounded-2xl border border-border p-4 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs text-text-muted">Sedan förra</p>
@@ -156,7 +197,6 @@ export default async function ClientFramstegPage({
                 </p>
               </div>
 
-              {/* Omkrets */}
               <div className="bg-white rounded-2xl border border-border p-4 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs text-text-muted">Midja</p>
@@ -167,7 +207,6 @@ export default async function ClientFramstegPage({
                 </p>
               </div>
 
-              {/* Steps */}
               <div className="bg-white rounded-2xl border border-border p-4 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs text-text-muted">Steg (snitt)</p>
@@ -186,7 +225,7 @@ export default async function ClientFramstegPage({
         )}
       </section>
 
-      {/* Kroppsstatistik - Weight history */}
+      {/* Kroppsstatistik */}
       <section className="mb-10">
         <h2 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
           <span>📊</span> Kroppsstatistik
@@ -209,7 +248,6 @@ export default async function ClientFramstegPage({
                 </div>
               </div>
 
-              {/* Weight history table */}
               <div className="space-y-1.5">
                 {progressEntries.slice(0, 12).map((entry: any, idx: number) => {
                   const prev = progressEntries[idx + 1];
@@ -233,19 +271,21 @@ export default async function ClientFramstegPage({
               </div>
             </div>
 
-            {/* Body measurements */}
-            {(latest?.waist_cm || latest?.chest_cm || latest?.hips_cm || latest?.arm_left_cm || latest?.thigh_left_cm) && (
+            {/* Body measurements — new order matching client form */}
+            {(latest?.chest_cm || latest?.waist_cm || latest?.thigh_left_cm || latest?.thigh_right_cm ||
+              latest?.arm_left_cm || latest?.arm_right_cm || latest?.height_cm || latest?.glutes_cm) && (
               <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
                 <p className="font-semibold text-text-primary mb-4">Omkrets</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {[
-                    { label: "Midja", value: latest.waist_cm, prev: previous?.waist_cm },
                     { label: "Bröst", value: latest.chest_cm, prev: previous?.chest_cm },
-                    { label: "Höfter", value: latest.hips_cm, prev: previous?.hips_cm },
-                    { label: "Arm (V)", value: latest.arm_left_cm, prev: previous?.arm_left_cm },
-                    { label: "Arm (H)", value: latest.arm_right_cm, prev: previous?.arm_right_cm },
-                    { label: "Lår (V)", value: latest.thigh_left_cm, prev: previous?.thigh_left_cm },
-                    { label: "Lår (H)", value: latest.thigh_right_cm, prev: previous?.thigh_right_cm },
+                    { label: "Midja", value: latest.waist_cm, prev: previous?.waist_cm },
+                    { label: "Stuss", value: latest.glutes_cm, prev: previous?.glutes_cm },
+                    { label: "Höger Lår", value: latest.thigh_right_cm, prev: previous?.thigh_right_cm },
+                    { label: "Vänster Lår", value: latest.thigh_left_cm, prev: previous?.thigh_left_cm },
+                    { label: "Höger Arm", value: latest.arm_right_cm, prev: previous?.arm_right_cm },
+                    { label: "Vänster Arm", value: latest.arm_left_cm, prev: previous?.arm_left_cm },
+                    { label: "Längd", value: latest.height_cm, prev: previous?.height_cm },
                   ].filter(m => m.value).map((m) => {
                     const diff = m.prev ? (m.value - m.prev).toFixed(1) : null;
                     return (
@@ -271,7 +311,7 @@ export default async function ClientFramstegPage({
         )}
       </section>
 
-      {/* Check-in history */}
+      {/* Check-in historik with expandable answers */}
       <section className="mb-10">
         <h2 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
           <span>📋</span> Check-in historik
@@ -280,7 +320,6 @@ export default async function ClientFramstegPage({
         {checkIns && checkIns.length > 0 ? (
           <div className="bg-white rounded-2xl border border-border shadow-sm divide-y divide-border-light">
             {checkIns.map((ci: any) => {
-              // Match by check_in_id first, then fall back to date proximity
               let entry = progressEntries?.find((pe: any) => pe.check_in_id === ci.id);
               if (!entry) {
                 const ciDate = ci.submitted_at || ci.created_at;
@@ -288,10 +327,14 @@ export default async function ClientFramstegPage({
                   const ciTime = new Date(ciDate).getTime();
                   entry = progressEntries?.find((pe: any) => {
                     const peTime = new Date(pe.date || pe.created_at).getTime();
-                    return Math.abs(ciTime - peTime) < 24 * 60 * 60 * 1000; // within 24h
+                    return Math.abs(ciTime - peTime) < 24 * 60 * 60 * 1000;
                   });
                 }
               }
+              const answers = entry?.check_in_answers as Record<string, string> | null;
+              const hasAnswers = answers && Object.keys(answers).length > 0;
+              const entryPhotos = entry?.id ? (photosByEntry[entry.id] || []) : [];
+
               return (
                 <div key={ci.id} className="px-5 py-4">
                   <div className="flex items-center justify-between mb-2">
@@ -314,12 +357,55 @@ export default async function ClientFramstegPage({
                       {entry.energy_level && <span>Energi: <strong>{entry.energy_level}/10</strong></span>}
                       {entry.stress_level && <span>Stress: <strong>{entry.stress_level}/10</strong></span>}
                       {entry.sleep_hours_avg && <span>Sömn: <strong>{entry.sleep_hours_avg}h</strong></span>}
+                      {entry.steps_avg && <span>Steg: <strong>{entry.steps_avg.toLocaleString("sv-SE")}</strong></span>}
                       {entry.waist_cm && <span>Midja: <strong>{entry.waist_cm} cm</strong></span>}
                     </div>
                   )}
-                  {entry?.notes && (
-                    <p className="text-sm text-text-muted mt-2 line-clamp-2">{entry.notes}</p>
+
+                  {entryPhotos.length > 0 && (
+                    <div className="flex gap-2 mt-3">
+                      {entryPhotos
+                        .slice()
+                        .sort((a, b) => (photoTypeOrder[a.photo_type] ?? 99) - (photoTypeOrder[b.photo_type] ?? 99))
+                        .slice(0, 6)
+                        .map((p) => (
+                          <a
+                            key={p.id}
+                            href={p.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="relative w-16 h-20 rounded-lg overflow-hidden border border-border-light hover:ring-2 hover:ring-primary/40 transition"
+                            title={photoTypeLabel[p.photo_type] || p.photo_type}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={p.url} alt={p.photo_type} className="w-full h-full object-cover" />
+                          </a>
+                        ))}
+                      {entryPhotos.length > 6 && (
+                        <div className="w-16 h-20 rounded-lg border border-border-light bg-surface flex items-center justify-center text-xs font-medium text-text-secondary">
+                          +{entryPhotos.length - 6}
+                        </div>
+                      )}
+                    </div>
                   )}
+
+                  {hasAnswers && (
+                    <details className="group mt-3">
+                      <summary className="flex items-center gap-1 text-xs font-medium text-primary-darker cursor-pointer hover:underline list-none">
+                        <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" />
+                        Visa veckans reflektion ({Object.keys(answers!).length} svar)
+                      </summary>
+                      <div className="mt-3 space-y-3 bg-surface rounded-xl p-4">
+                        {Object.entries(answers!).map(([key, value]) => (
+                          <div key={key}>
+                            <p className="text-xs font-semibold text-text-primary mb-1">{QUESTION_LABELS[key] || key}</p>
+                            <p className="text-sm text-text-secondary whitespace-pre-wrap">{value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+
                   {ci.coach_notes && (
                     <div className="mt-2 bg-primary-lighter/30 rounded-lg px-3 py-2">
                       <p className="text-xs text-primary-darker font-medium">Coach-kommentar:</p>
@@ -337,16 +423,55 @@ export default async function ClientFramstegPage({
         )}
       </section>
 
-      {/* Framstegsbilder */}
+      {/* Framstegsbilder — full gallery grouped by entry */}
       <section>
         <h2 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
           <span>📸</span> Framstegsbilder
         </h2>
-        <div className="bg-white rounded-2xl border border-border p-8 text-center shadow-sm">
-          <ImageIcon className="w-10 h-10 text-text-muted mx-auto mb-3" />
-          <p className="text-text-muted">Framstegsbilder visas här när klienten laddar upp via check-in</p>
-          <p className="text-sm text-text-muted mt-1">Bilder laddas upp av klienten i deras portal</p>
-        </div>
+
+        {signedPhotos.length > 0 ? (
+          <div className="space-y-4">
+            {progressEntries
+              ?.filter((e: any) => (photosByEntry[e.id] || []).length > 0)
+              .map((entry: any) => {
+                const entryPhotos = (photosByEntry[entry.id] || [])
+                  .slice()
+                  .sort((a, b) => (photoTypeOrder[a.photo_type] ?? 99) - (photoTypeOrder[b.photo_type] ?? 99));
+                return (
+                  <div key={entry.id} className="bg-white rounded-2xl border border-border p-5 shadow-sm">
+                    <p className="text-sm font-medium text-text-primary mb-3">
+                      {new Date(entry.date).toLocaleDateString("sv-SE", { day: "numeric", month: "long", year: "numeric" })}
+                    </p>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
+                      {entryPhotos.map((p) => (
+                        <a
+                          key={p.id}
+                          href={p.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="group relative aspect-[3/4] rounded-xl overflow-hidden border border-border-light hover:ring-2 hover:ring-primary/40 transition"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={p.url} alt={p.photo_type} className="w-full h-full object-cover" />
+                          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1">
+                            <p className="text-[10px] font-semibold text-white uppercase tracking-wide">
+                              {photoTypeLabel[p.photo_type] || "Extra"}
+                            </p>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-border p-8 text-center shadow-sm">
+            <ImageIcon className="w-10 h-10 text-text-muted mx-auto mb-3" />
+            <p className="text-text-muted">Framstegsbilder visas här när klienten laddar upp via check-in</p>
+            <p className="text-sm text-text-muted mt-1">Bilder laddas upp av klienten i deras portal</p>
+          </div>
+        )}
       </section>
     </div>
   );

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, Loader2, Sparkles } from "lucide-react";
+import { CheckCircle, Loader2, Sparkles, Camera, Plus, X } from "lucide-react";
 
 const QUESTIONS: { key: string; label: string }[] = [
   {
@@ -55,10 +55,14 @@ const QUESTIONS: { key: string; label: string }[] = [
   },
 ];
 
+type PhotoSlot = { type: "front" | "back" | "side" | "other"; label: string; file: File | null; previewUrl: string | null };
+
 export default function CheckInPage() {
   const [weight, setWeight] = useState("");
+  const [height, setHeight] = useState("");
   const [waist, setWaist] = useState("");
   const [chest, setChest] = useState("");
+  const [glutes, setGlutes] = useState("");
   const [armLeft, setArmLeft] = useState("");
   const [armRight, setArmRight] = useState("");
   const [thighLeft, setThighLeft] = useState("");
@@ -75,10 +79,16 @@ export default function CheckInPage() {
   const [prefilling, setPrefilling] = useState(true);
   const [submitted, setSubmitted] = useState(false);
 
+  // Photo slots
+  const [photoFront, setPhotoFront] = useState<PhotoSlot>({ type: "front", label: "Framsida", file: null, previewUrl: null });
+  const [photoBack, setPhotoBack] = useState<PhotoSlot>({ type: "back", label: "Baksida", file: null, previewUrl: null });
+  const [photoSide, setPhotoSide] = useState<PhotoSlot>({ type: "side", label: "Sida", file: null, previewUrl: null });
+  const [extraPhotos, setExtraPhotos] = useState<PhotoSlot[]>([]);
+
   const router = useRouter();
   const supabase = createClient();
 
-  // Preload previous values so clients don't have to re-enter unchanged measurements
+  // Preload previous values so clients don't have to re-enter unchanged data
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -100,7 +110,7 @@ export default function CheckInPage() {
 
       const { data: last } = await supabase
         .from("progress_entries")
-        .select("weight_kg, waist_cm, chest_cm, arm_left_cm, arm_right_cm, thigh_left_cm, thigh_right_cm, steps_avg, sleep_hours_avg")
+        .select("weight_kg, height_cm, waist_cm, chest_cm, glutes_cm, arm_left_cm, arm_right_cm, thigh_left_cm, thigh_right_cm, steps_avg, sleep_hours_avg")
         .eq("client_id", client.id)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -108,8 +118,10 @@ export default function CheckInPage() {
 
       if (last) {
         if (last.weight_kg != null) setWeight(String(last.weight_kg));
+        if (last.height_cm != null) setHeight(String(last.height_cm));
         if (last.waist_cm != null) setWaist(String(last.waist_cm));
         if (last.chest_cm != null) setChest(String(last.chest_cm));
+        if (last.glutes_cm != null) setGlutes(String(last.glutes_cm));
         if (last.arm_left_cm != null) setArmLeft(String(last.arm_left_cm));
         if (last.arm_right_cm != null) setArmRight(String(last.arm_right_cm));
         if (last.thigh_left_cm != null) setThighLeft(String(last.thigh_left_cm));
@@ -121,6 +133,16 @@ export default function CheckInPage() {
     })();
   }, []);
 
+  // Cleanup preview object URLs on unmount
+  useEffect(() => {
+    return () => {
+      [photoFront, photoBack, photoSide, ...extraPhotos].forEach((p) => {
+        if (p.previewUrl) URL.revokeObjectURL(p.previewUrl);
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Auto-redirect to dashboard after success celebration
   useEffect(() => {
     if (!submitted) return;
@@ -128,19 +150,50 @@ export default function CheckInPage() {
     return () => clearTimeout(t);
   }, [submitted, router]);
 
+  function handlePhotoPick(slot: PhotoSlot, file: File | null, setSlot: (p: PhotoSlot) => void) {
+    if (slot.previewUrl) URL.revokeObjectURL(slot.previewUrl);
+    if (!file) { setSlot({ ...slot, file: null, previewUrl: null }); return; }
+    setSlot({ ...slot, file, previewUrl: URL.createObjectURL(file) });
+  }
+
+  function handleExtraPick(index: number, file: File | null) {
+    setExtraPhotos((prev) => {
+      const next = [...prev];
+      const slot = next[index];
+      if (slot.previewUrl) URL.revokeObjectURL(slot.previewUrl);
+      if (!file) { next[index] = { ...slot, file: null, previewUrl: null }; return next; }
+      next[index] = { ...slot, file, previewUrl: URL.createObjectURL(file) };
+      return next;
+    });
+  }
+
+  function addExtraSlot() {
+    setExtraPhotos((prev) => [...prev, { type: "other", label: `Extra ${prev.length + 1}`, file: null, previewUrl: null }]);
+  }
+
+  function removeExtraSlot(index: number) {
+    setExtraPhotos((prev) => {
+      const next = [...prev];
+      const slot = next[index];
+      if (slot.previewUrl) URL.revokeObjectURL(slot.previewUrl);
+      next.splice(index, 1);
+      return next;
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) { setLoading(false); return; }
 
     const { data: client } = await supabase
       .from("clients")
       .select("id")
       .eq("profile_id", user.id)
       .single();
-    if (!client) return;
+    if (!client) { setLoading(false); return; }
 
     // 1. Find or create a check-in record
     let checkInId: string | null = null;
@@ -163,29 +216,61 @@ export default function CheckInPage() {
       if (newCheckIn) checkInId = newCheckIn.id;
     }
 
-    // 2. Create progress entry
+    // 2. Create progress entry (select back the id so we can link photos)
     const answersClean = Object.fromEntries(
       Object.entries(answers).filter(([, v]) => v.trim().length > 0)
     );
 
-    const { error } = await supabase.from("progress_entries").insert({
-      client_id: client.id,
-      check_in_id: checkInId,
-      weight_kg: weight ? parseFloat(weight) : null,
-      waist_cm: waist ? parseFloat(waist) : null,
-      chest_cm: chest ? parseFloat(chest) : null,
-      arm_left_cm: armLeft ? parseFloat(armLeft) : null,
-      arm_right_cm: armRight ? parseFloat(armRight) : null,
-      thigh_left_cm: thighLeft ? parseFloat(thighLeft) : null,
-      thigh_right_cm: thighRight ? parseFloat(thighRight) : null,
-      steps_avg: steps ? parseInt(steps) : null,
-      energy_level: energy ? parseInt(energy) : null,
-      sleep_hours_avg: sleep ? parseFloat(sleep) : null,
-      stress_level: stress ? parseInt(stress) : null,
-      check_in_answers: Object.keys(answersClean).length > 0 ? answersClean : null,
-    });
+    const { data: entry, error } = await supabase
+      .from("progress_entries")
+      .insert({
+        client_id: client.id,
+        check_in_id: checkInId,
+        weight_kg: weight ? parseFloat(weight) : null,
+        height_cm: height ? parseFloat(height) : null,
+        waist_cm: waist ? parseFloat(waist) : null,
+        chest_cm: chest ? parseFloat(chest) : null,
+        glutes_cm: glutes ? parseFloat(glutes) : null,
+        arm_left_cm: armLeft ? parseFloat(armLeft) : null,
+        arm_right_cm: armRight ? parseFloat(armRight) : null,
+        thigh_left_cm: thighLeft ? parseFloat(thighLeft) : null,
+        thigh_right_cm: thighRight ? parseFloat(thighRight) : null,
+        steps_avg: steps ? parseInt(steps) : null,
+        energy_level: energy ? parseInt(energy) : null,
+        sleep_hours_avg: sleep ? parseFloat(sleep) : null,
+        stress_level: stress ? parseInt(stress) : null,
+        check_in_answers: Object.keys(answersClean).length > 0 ? answersClean : null,
+      })
+      .select("id")
+      .single();
 
-    // 3. Mark the check-in as submitted
+    // 3. Upload photos if any + create progress_photos rows
+    if (!error && entry?.id) {
+      const allPhotos: PhotoSlot[] = [
+        photoFront,
+        photoBack,
+        photoSide,
+        ...extraPhotos,
+      ].filter((p) => p.file);
+
+      for (const slot of allPhotos) {
+        if (!slot.file) continue;
+        const ext = (slot.file.name.split(".").pop() || "jpg").toLowerCase();
+        const path = `${client.id}/${entry.id}/${slot.type}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error: uploadErr } = await supabase.storage
+          .from("progress-photos")
+          .upload(path, slot.file, { upsert: false, contentType: slot.file.type });
+        if (!uploadErr) {
+          await supabase.from("progress_photos").insert({
+            progress_entry_id: entry.id,
+            storage_path: path,
+            photo_type: slot.type,
+          });
+        }
+      }
+    }
+
+    // 4. Mark the check-in as submitted
     if (checkInId) {
       await supabase
         .from("check_ins")
@@ -194,9 +279,7 @@ export default function CheckInPage() {
     }
 
     setLoading(false);
-    if (!error) {
-      setSubmitted(true);
-    }
+    if (!error) setSubmitted(true);
   }
 
   if (submitted) {
@@ -257,7 +340,7 @@ export default function CheckInPage() {
           </CardContent>
         </Card>
 
-        {/* Measurements — new order: Bröst, Midja, Höger Lår, Vänster Lår, Höger Arm, Vänster Arm */}
+        {/* Measurements — new order + Längd + Stuss */}
         <Card>
           <CardContent>
             <h3 className="font-semibold text-text-primary mb-3">Mått (cm)</h3>
@@ -269,7 +352,56 @@ export default function CheckInPage() {
               <Input id="thighLeft" type="number" step="0.1" placeholder="Vänster Lår" value={thighLeft} onChange={(e) => setThighLeft(e.target.value)} label="Vänster Lår" />
               <Input id="armRight" type="number" step="0.1" placeholder="Höger Arm" value={armRight} onChange={(e) => setArmRight(e.target.value)} label="Höger Arm" />
               <Input id="armLeft" type="number" step="0.1" placeholder="Vänster Arm" value={armLeft} onChange={(e) => setArmLeft(e.target.value)} label="Vänster Arm" />
+              <Input id="height" type="number" step="0.1" placeholder="Längd" value={height} onChange={(e) => setHeight(e.target.value)} label="Längd" />
+              <Input id="glutes" type="number" step="0.1" placeholder="Stuss" value={glutes} onChange={(e) => setGlutes(e.target.value)} label="Stuss" />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Photo upload */}
+        <Card>
+          <CardContent>
+            <h3 className="font-semibold text-text-primary mb-1">Ladda upp bilder</h3>
+            <p className="text-xs text-text-muted mb-4">
+              Ta bilderna på samma plats och i samma ljusförhållanden varje vecka. Strandbikini / underkläder ger bästa jämförelse.
+            </p>
+
+            <div className="grid grid-cols-3 gap-2.5">
+              <PhotoCard slot={photoFront} onPick={(f) => handlePhotoPick(photoFront, f, setPhotoFront)} />
+              <PhotoCard slot={photoBack} onPick={(f) => handlePhotoPick(photoBack, f, setPhotoBack)} />
+              <PhotoCard slot={photoSide} onPick={(f) => handlePhotoPick(photoSide, f, setPhotoSide)} />
+            </div>
+
+            {extraPhotos.length > 0 && (
+              <div className="grid grid-cols-3 gap-2.5 mt-2.5">
+                {extraPhotos.map((slot, i) => (
+                  <div key={i} className="relative">
+                    <PhotoCard slot={slot} onPick={(f) => handleExtraPick(i, f)} />
+                    <button
+                      type="button"
+                      onClick={() => removeExtraSlot(i)}
+                      className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-white border border-border shadow-sm flex items-center justify-center text-text-muted hover:text-error"
+                      aria-label="Ta bort"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={addExtraSlot}
+              className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border text-sm font-medium text-text-secondary hover:border-primary/50 hover:text-primary-darker transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Lägg till ytterligare bilder
+            </button>
+
+            <p className="text-[11px] text-text-muted mt-3 leading-relaxed">
+              Tips: gör en video av alla poser och ta skärmdumpar. Väg dig på morgonen efter toalettbesök.
+            </p>
           </CardContent>
         </Card>
 
@@ -345,6 +477,50 @@ export default function CheckInPage() {
           {loading ? "Skickar..." : "Skicka check-in"}
         </Button>
       </form>
+    </div>
+  );
+}
+
+// ─── Photo card component ─────────────────────────────────
+function PhotoCard({ slot, onPick }: { slot: PhotoSlot; onPick: (file: File | null) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="space-y-1.5">
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className={`relative w-full aspect-[3/4] rounded-xl overflow-hidden transition-all ${
+          slot.previewUrl
+            ? "ring-2 ring-primary/30 shadow-sm"
+            : "border-2 border-dashed border-border bg-surface hover:border-primary/50 hover:bg-primary-lighter/20"
+        }`}
+      >
+        {slot.previewUrl ? (
+          <>
+            <img src={slot.previewUrl} alt={slot.label} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+              <span className="text-white text-xs font-medium bg-black/50 px-2 py-1 rounded-full">Byt bild</span>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full gap-2 text-text-muted">
+            <div className="w-10 h-10 rounded-full bg-primary-lighter/40 flex items-center justify-center">
+              <Camera className="w-5 h-5 text-primary-darker" />
+            </div>
+            <span className="text-[11px] font-medium">Välj bild</span>
+          </div>
+        )}
+      </button>
+      <p className="text-xs text-center font-medium text-text-secondary">{slot.label}</p>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={(e) => onPick(e.target.files?.[0] || null)}
+        className="hidden"
+      />
     </div>
   );
 }
