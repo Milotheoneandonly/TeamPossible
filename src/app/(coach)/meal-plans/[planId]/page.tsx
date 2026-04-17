@@ -22,7 +22,7 @@ import { CSS } from "@dnd-kit/utilities";
 // ─── Draggable sidebar recipe ───────────────────────────────
 function DraggableSidebarRecipe({ recipe, onClick }: { recipe: any; onClick: () => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `sidebar-${recipe.id}`,
+    id: `sidebar-recipe-${recipe.id}`,
     data: { recipeId: recipe.id },
   });
 
@@ -54,6 +54,44 @@ function DraggableSidebarRecipe({ recipe, onClick }: { recipe: any; onClick: () 
         <p className="text-[10px] text-text-muted truncate">
           {recipe.total_calories ? `${Math.round(recipe.total_calories)} kcal` : ""}
           {recipe.tags?.length ? ` \u00b7 ${recipe.tags.slice(0, 2).join(", ")}` : ""}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Draggable sidebar food (raw ingredient) ───────────────
+function DraggableSidebarFood({ food, onClick }: { food: any; onClick: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `sidebar-food-${food.id}`,
+    data: { foodId: food.id },
+  });
+
+  const style = {
+    transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  const name = food.name_sv || food.name;
+  const kcal = food.calories_per_100g ? `${Math.round(food.calories_per_100g)} kcal/100g` : "";
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-surface-hover transition-colors text-left border-b border-border-light cursor-grab active:cursor-grabbing"
+    >
+      <div className="w-10 h-10 rounded-lg bg-primary-lighter/40 flex items-center justify-center shrink-0">
+        <Salad className="w-4 h-4 text-primary-darker" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-text-primary truncate">{name}</p>
+        <p className="text-[10px] text-text-muted truncate">
+          {kcal}
+          {food.brand ? ` \u00b7 ${food.brand}` : ""}
         </p>
       </div>
     </div>
@@ -168,6 +206,8 @@ export default function MealPlanEditorPage() {
 
   const [plan, setPlan] = useState<any>(null);
   const [recipes, setRecipes] = useState<any[]>([]);
+  const [foods, setFoods] = useState<any[]>([]);
+  const [sidebarTab, setSidebarTab] = useState<"recipes" | "foods">("recipes");
   const [clientName, setClientName] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -190,6 +230,7 @@ export default function MealPlanEditorPage() {
   useEffect(() => {
     loadPlan();
     loadRecipes();
+    loadFoods();
     if (assignClientId) loadClientName();
   }, []);
 
@@ -230,6 +271,14 @@ export default function MealPlanEditorPage() {
       .select("id, name, name_sv, total_calories, total_protein, total_carbs, total_fat, tags, image_url")
       .order("name");
     setRecipes(data || []);
+  }
+
+  async function loadFoods() {
+    const { data } = await supabase
+      .from("foods")
+      .select("id, name, name_sv, brand, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, serving_size_g")
+      .order("name");
+    setFoods(data || []);
   }
 
   async function loadClientName() {
@@ -314,6 +363,35 @@ export default function MealPlanEditorPage() {
       protein: recipe.total_protein || 0,
       carbs: recipe.total_carbs || 0,
       fat: recipe.total_fat || 0,
+    });
+    loadPlan();
+  }
+
+  async function addFoodToMeal(foodId: string, targetMealId?: string) {
+    const mealId = targetMealId || activeMeal;
+    if (!mealId) return;
+    const food = foods.find((f) => f.id === foodId);
+    if (!food) return;
+
+    // Default gram amount: the food's serving size, or 100g
+    const grams = food.serving_size_g || 100;
+    const factor = grams / 100;
+
+    // Get max sort for this meal
+    const meal = getAllMeals().find((m: any) => m.id === mealId);
+    const items = meal ? (meal.meal_items || []) : [];
+    const maxSort = items.reduce((max: number, i: any) => Math.max(max, i.sort_order || 0), -1);
+
+    await supabase.from("meal_items").insert({
+      meal_id: mealId,
+      food_id: foodId,
+      servings: 1,
+      amount_g: grams,
+      sort_order: maxSort + 1,
+      calories: Math.round((food.calories_per_100g || 0) * factor),
+      protein: Math.round((food.protein_per_100g || 0) * factor),
+      carbs: Math.round((food.carbs_per_100g || 0) * factor),
+      fat: Math.round((food.fat_per_100g || 0) * factor),
     });
     loadPlan();
   }
@@ -439,9 +517,8 @@ export default function MealPlanEditorPage() {
     const activeId = String(active.id);
     const overId = String(over.id);
 
-    // 1. Sidebar recipe dropped → find target meal from drop position
-    if (activeId.startsWith("sidebar-")) {
-      const recipeId = activeId.replace("sidebar-", "");
+    // 1. Sidebar item dropped (recipe or food) → find target meal from drop position
+    if (activeId.startsWith("sidebar-recipe-") || activeId.startsWith("sidebar-food-")) {
       let targetMealId = activeMeal;
 
       if (overId.startsWith("meal-drop-")) {
@@ -453,7 +530,14 @@ export default function MealPlanEditorPage() {
         if (parentMeal) targetMealId = parentMeal;
       }
 
-      if (targetMealId) await addRecipeToMeal(recipeId, targetMealId);
+      if (!targetMealId) return;
+      if (activeId.startsWith("sidebar-recipe-")) {
+        const recipeId = activeId.replace("sidebar-recipe-", "");
+        await addRecipeToMeal(recipeId, targetMealId);
+      } else {
+        const foodId = activeId.replace("sidebar-food-", "");
+        await addFoodToMeal(foodId, targetMealId);
+      }
       return;
     }
 
@@ -536,6 +620,16 @@ export default function MealPlanEditorPage() {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (r.name || "").toLowerCase().includes(q) || (r.name_sv || "").toLowerCase().includes(q) || (r.tags || []).some((t: string) => t.toLowerCase().includes(q));
+  });
+
+  const filteredFoods = foods.filter((f) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (f.name || "").toLowerCase().includes(q) ||
+      (f.name_sv || "").toLowerCase().includes(q) ||
+      (f.brand || "").toLowerCase().includes(q)
+    );
   });
 
   // ─── Loading / assigned / not found states ─────────────────
@@ -660,8 +754,35 @@ export default function MealPlanEditorPage() {
       {/* Main content — stacked meals */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <div className="flex-1 flex overflow-hidden">
-        {/* Recipe library sidebar */}
+        {/* Library sidebar — Livsmedel / Recept tabs */}
         <div className="w-72 bg-white border-r border-border flex flex-col shrink-0 hidden lg:flex">
+          {/* Tab switcher */}
+          <div className="flex border-b border-border">
+            <button
+              type="button"
+              onClick={() => setSidebarTab("foods")}
+              className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
+                sidebarTab === "foods"
+                  ? "text-primary-darker border-primary-darker"
+                  : "text-text-muted border-transparent hover:text-text-primary"
+              }`}
+            >
+              Livsmedel
+            </button>
+            <button
+              type="button"
+              onClick={() => setSidebarTab("recipes")}
+              className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
+                sidebarTab === "recipes"
+                  ? "text-primary-darker border-primary-darker"
+                  : "text-text-muted border-transparent hover:text-text-primary"
+              }`}
+            >
+              Recept
+            </button>
+          </div>
+
+          {/* Search */}
           <div className="p-3 space-y-2 border-b border-border">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
@@ -669,25 +790,44 @@ export default function MealPlanEditorPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="S\u00f6k recept..."
+                placeholder={sidebarTab === "foods" ? "S\u00f6k livsmedel..." : "S\u00f6k recept..."}
                 className="w-full rounded-lg border border-border pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
               />
             </div>
           </div>
+
+          {/* List */}
           <div className="flex-1 overflow-y-auto">
-            {filteredRecipes.length === 0 ? (
-              <div className="p-4 text-center">
-                <p className="text-xs text-text-muted">Inga recept hittades</p>
-                <Link href="/foods/new-recipe" className="text-xs text-primary-darker hover:underline mt-1 inline-block">Skapa recept &rarr;</Link>
-              </div>
+            {sidebarTab === "recipes" ? (
+              filteredRecipes.length === 0 ? (
+                <div className="p-4 text-center">
+                  <p className="text-xs text-text-muted">Inga recept hittades</p>
+                  <Link href="/foods/new-recipe" className="text-xs text-primary-darker hover:underline mt-1 inline-block">Skapa recept &rarr;</Link>
+                </div>
+              ) : (
+                filteredRecipes.map((recipe) => (
+                  <DraggableSidebarRecipe
+                    key={recipe.id}
+                    recipe={recipe}
+                    onClick={() => addRecipeToMeal(recipe.id)}
+                  />
+                ))
+              )
             ) : (
-              filteredRecipes.map((recipe) => (
-                <DraggableSidebarRecipe
-                  key={recipe.id}
-                  recipe={recipe}
-                  onClick={() => addRecipeToMeal(recipe.id)}
-                />
-              ))
+              filteredFoods.length === 0 ? (
+                <div className="p-4 text-center">
+                  <p className="text-xs text-text-muted">Inga livsmedel hittades</p>
+                  <Link href="/foods/new-food" className="text-xs text-primary-darker hover:underline mt-1 inline-block">Skapa livsmedel &rarr;</Link>
+                </div>
+              ) : (
+                filteredFoods.map((food) => (
+                  <DraggableSidebarFood
+                    key={food.id}
+                    food={food}
+                    onClick={() => addFoodToMeal(food.id)}
+                  />
+                ))
+              )
             )}
           </div>
         </div>
